@@ -23,3 +23,10 @@ if required, replace key url part by <<,
 save as UTF-8 encoded Unicode text
 
 control globe by W, A, S, D and arrow keys on keyboard
+
+the application not informs about failed retrieval of map tiles
+eg when the key is invalid, the window remains black in such case
+
+if the application does not start, you might need the Visual Studio 2022
+X64 Visual C(++) Redistributable you can find at
+https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist
