@@ -10,7 +10,7 @@ keys of length up to and including 4096 bytes
 (around 4096 latin characters) are supported,
 key may not contain a % character
 
-raster tile maps of any service is supported when
+raster tile maps of any service are supported when
 service delivers 256x256 sized JPEGs
 service url identifies map tiles by a z/x/y scheme
 service url does not contain a % character
