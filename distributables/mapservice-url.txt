@@ -1,0 +1,1 @@
+api.mapbox.com/v4/mapbox.satellite/^^.jpg90?access_token=<<
