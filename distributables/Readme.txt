@@ -17,6 +17,7 @@ service url does not contain a % character
 service url is below or equal 4096 bytes in size
 
 put service url in file mapservice-key.txt on first line,
+do not include protocol and ://, so no https://,
 replace z/x/y map tile identifying url part by ^^,
 if required, replace key url part by <<,
 save as UTF-8 encoded Unicode text
