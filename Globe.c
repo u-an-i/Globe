@@ -3,7 +3,7 @@
 #include <SDL.h>
 #include <SDL_main.h>                   // only include this one in the source file with main()!
 #include <stdio.h>
-#include <math.h>
+#include <mathimf.h>
 #include <map.h>
 #include <stdlib.h>
 #include <windows.h>
@@ -32,49 +32,49 @@ const int rasterTileSize = 256;
 const char idFormat[] = "%d/%d/%d";
 const unsigned char zero3[] = { '\0', '\0', '\0' };
 
-const double PI = 3.141592653589793238462643383279;
-const double PIHalf = 1.570796326794896619231321691639;
-const double PIDouble = 6.28318530717958647692528676655;
+const long double PI = 3.141592653589793238462643383279L;
+const long double PIHalf = 1.570796326794896619231321691639L;
+const long double PIDouble = 6.28318530717958647692528676655L;
 
 
 int centerX, centerY;
-double rScale;
-double rScaleSqr;
+long double rScale;
+long double rScaleSqr;
 
-double phiLeft = 0;
-double axisTilt = 0;
+long double phiLeft = 0;
+long double axisTilt = 0;
 
 typedef struct PT
 {
-    double p;
-    double t;
+    long double p;
+    long double t;
 } pt;
 
 pt at(int x, int y)
 {
     int xC = x - centerX;
     int yC = y - centerY;
-    double r2Sqr = rScaleSqr - xC * xC;
+    long double r2Sqr = rScaleSqr - xC * xC;
     if (yC * yC <= r2Sqr)
     {
-        float p, t;
-        if (r2Sqr > 0.0)
+        long double p, t;
+        if (r2Sqr > 0.0L)
         {
-            double r2Sqrt = sqrt(r2Sqr);
-            double ySpace = r2Sqrt * sin(asin(yC / r2Sqrt) - axisTilt);
-            t = asin(ySpace / rScale);
-            double r2ScAT = r2Sqrt * cos(axisTilt);
-            double s = axisTilt > 0 && -yC > r2ScAT || axisTilt < 0 && yC > r2ScAT ? -1.0 : 1.0;
-            double r3Sqr = rScaleSqr - ySpace * ySpace;
-            if (r3Sqr > 0.0)
+            long double r2Sqrt = sqrtl(r2Sqr);
+            long double ySpace = r2Sqrt * sinl(asinl(yC / r2Sqrt) - axisTilt);
+            t = asinl(ySpace / rScale);
+            long double r2ScAT = r2Sqrt * cosl(axisTilt);
+            long double s = ((axisTilt > 0L && -yC > r2ScAT) || (axisTilt < 0L && yC > r2ScAT)) ? -1.0L : 1.0L;
+            long double r3Sqr = rScaleSqr - ySpace * ySpace;
+            if (r3Sqr > 0.0L)
             {
-                p = phiLeft + s * acos(-xC / sqrt(r3Sqr));
+                p = phiLeft + s * acosl(-xC / sqrtl(r3Sqr));
             }
             else
             {
                 p = phiLeft + s * PIHalf;
             }
-            p = fmod(p + PIDouble, PIDouble);
+            p = fmodl(p + PIDouble, PIDouble);
             pt value;
             value.p = p;
             value.t = t;
@@ -82,13 +82,13 @@ pt at(int x, int y)
         }
         else
         {
-            t = 0.0;
+            t = 0.0L;
             p = phiLeft;
-            if (xC > 0.0)
+            if (xC > 0.0L)
             {
                 p += PI;
             }
-            p = fmod(p + PIDouble, PIDouble);
+            p = fmodl(p + PIDouble, PIDouble);
             pt value;
             value.p = p;
             value.t = t;
@@ -96,29 +96,29 @@ pt at(int x, int y)
         }
     }
     pt value;
-    value.p = 0.0;
-    value.t = 2.0;
+    value.p = 0.0L;
+    value.t = 2.0L;
     return value;
 }
 
 
 int zoom;
-float stepSize;
+long double stepSize;
 
 void determineZoom() {
     pt middleLeft = at(0, HEIGHT / 2);
     int newZoom;
-    double newStepSize;
-    if (middleLeft.t == 2.0) {
-        newZoom = ceil(log2(2 * rScale * 2 / rasterTileSize));
+    long double newStepSize;
+    if (middleLeft.t == 2.0L) {
+        newZoom = ceill(log2l(2 * rScale * 2 / rasterTileSize));
         newStepSize = PIDouble / 48;
     } else {
-        double deltaP = at(WIDTH - 1, HEIGHT / 2).p - middleLeft.p;
-        if (deltaP <= 0.0) {
+        long double deltaP = at(WIDTH - 1, HEIGHT / 2).p - middleLeft.p;
+        if (deltaP <= 0.0L) {
             deltaP += PIDouble;
         }
-        double pixelPerPhi = WIDTH / deltaP;
-        newZoom = ceil(log2(pixelPerPhi * PIDouble / rasterTileSize));
+        long double pixelPerPhi = WIDTH / deltaP;
+        newZoom = ceill(log2l(pixelPerPhi * PIDouble / rasterTileSize));
         newStepSize = deltaP / 16;
     }
     if (newZoom >= 0 && newZoom <= 30) {
@@ -334,7 +334,7 @@ unsigned __stdcall collector(void* data) {
                                             aId->buffer = NULL;
                                             aId->bytesRead = 0;
                                             LOG(("%s\n", id));
-                                            if (hashmap_full(imgPresent)) {
+                                            if (hashmap_sets_left_before_resize(imgPresent) <= 1) {
                                                 dontWaitForCollector = 0;
                                                 int countRastering;
                                                 do {
@@ -451,7 +451,7 @@ typedef struct Link {
 
 void pickPixels(void* key, size_t ksize, uintptr_t value, void* usr) {
     unsigned char* pixels;
-    hashmap_get(imgPresent, key, ksize, &((uintptr_t)pixels));
+    hashmap_get(imgPresent, key, ksize, &pixels);
     if (pixels != NULL) {
         link* l = (link*)value;
         do {
@@ -496,10 +496,10 @@ unsigned __stdcall raster(void* data) {
     for (int y = yStart; y < yEnd; ++y) {
         for (int x = 0; x < WIDTH; ++x) {
             pt angles = at(x, y);
-            if (angles.t != 2.0) {
-                double amount = pow(2.0, zoom);
-                double xTile = angles.p * amount / PIDouble;
-                double yTile = (angles.t - -PIHalf - .0001) * amount / PI;              // - .0001 = prevent exact 1 as result (values in image are [0,1), [ = including, ) = excluding )
+            if (angles.t != 2.0L) {
+                long double amount = pow(2, zoom);
+                long double xTile = angles.p * amount / PIDouble;
+                long double yTile = (angles.t - -PIHalf - .0001L) * amount / PI;        // - .0001 = prevent exact 1 as result (values in image are [0,1), [ = including, ) = excluding )
                 int tileX = (int)xTile;                                                 // (int) floors towards 0
                 int tileY = (int)yTile;
                 char id[25];                                                            // maximum length of id incl. \0 at maximum zoom of 30
@@ -513,14 +513,14 @@ unsigned __stdcall raster(void* data) {
                         xTile = 0;
                     }
                     else if (xTile >= 1) {
-                        xTile = .9999;
+                        xTile = .9999L;
                     }
-                    yTile = (angles.t - -PIHalf - .0001) / PI;
+                    yTile = (angles.t - -PIHalf - .0001L) / PI;
                     if (yTile < 0) {
                         yTile = 0;
                     }
                     else if (yTile >= 1) {
-                        yTile = .9999;
+                        yTile = .9999L;
                     }
                     tileX = 0;
                     tileY = 0;
@@ -533,10 +533,10 @@ unsigned __stdcall raster(void* data) {
                     case REFRESH:
                     case ZIN:
                     case ZOUT:
-                    case SIDE:
+                    case SIDE: {
                         int z = zoom;
-                        double xTileI = xTile;
-                        double yTileI = yTile;
+                        long double xTileI = xTile;
+                        long double yTileI = yTile;
                         int tileXI = tileX;
                         int tileYI = tileY;
                         char newId[25];
@@ -549,9 +549,9 @@ unsigned __stdcall raster(void* data) {
                             iXTile = (int)((xTileI - tileXI) * rasterTileSize);
                             iYTile = (int)((yTileI - tileYI) * rasterTileSize);
                             break;                                                      // no break intended for ZIN, ZOUT, SIDE = get as detailed zoom as available uninterrupted from here but this costs too much framerate on Ryzen 5800X
-                            double amount = pow(2.0, ++z);
+                            long double amount = pow(2, ++z);
                             xTileI = angles.p * amount / PIDouble;
-                            yTileI = (angles.t - -PIHalf - .0001) * amount / PI;
+                            yTileI = (angles.t - -PIHalf - .0001L) * amount / PI;
                             tileXI = (int)xTileI;
                             tileYI = (int)yTileI;
                             newLength = sprintf_s(newId, 25, idFormat, z, tileXI, tileYI);
@@ -561,6 +561,7 @@ unsigned __stdcall raster(void* data) {
                             key = newId;
                         }
                         break;
+                    }
                     case INIT:
                     default:
                         break;
@@ -584,9 +585,9 @@ unsigned __stdcall raster(void* data) {
                         case ZIN:
                         case SIDE:
                             if (zoom > 0) {
-                                double amount = pow(2.0, zoom - 1);
-                                double xTile = angles.p * amount / PIDouble;
-                                double yTile = (angles.t - -PIHalf - .0001) * amount / PI;
+                                long double amount = pow(2, zoom - 1);
+                                long double xTile = angles.p * amount / PIDouble;
+                                long double yTile = (angles.t - -PIHalf - .0001L) * amount / PI;
                                 int tileX = (int)xTile;
                                 int tileY = (int)yTile;
                                 char id[25];
@@ -599,14 +600,14 @@ unsigned __stdcall raster(void* data) {
                                         xTile = 0;
                                     }
                                     else if (xTile >= 1) {
-                                        xTile = .9999;
+                                        xTile = .9999L;
                                     }
-                                    yTile = (angles.t - -PIHalf - .0001) / PI;
+                                    yTile = (angles.t - -PIHalf - .0001L) / PI;
                                     if (yTile < 0) {
                                         yTile = 0;
                                     }
                                     else if (yTile >= 1) {
-                                        yTile = .9999;
+                                        yTile = .9999L;
                                     }
                                     tileX = 0;
                                     tileY = 0;
@@ -916,7 +917,7 @@ SDL_STARTED:
     }
     url = defaultURL;
 
-URL_END:
+URL_END: ;
     wchar_t* urlFormat;
     if (wcschr(url, L'%') == NULL) {
         wchar_t* indexKey = wcsstr(url, L"<<");
@@ -982,7 +983,7 @@ URL_END:
         }
         goto EXIT_APP;
 
-KEY_END:
+KEY_END: ;
         wchar_t* pathBegin = wcschr(urlFormat, L'/');
         if (pathBegin != NULL) {
             size_t hostLength = pathBegin - urlFormat;
@@ -1029,7 +1030,7 @@ KEY_END:
         errorsMask |= 4;
     }
 
-EXIT_APP:
+EXIT_APP: ;
     int count = 0;
     do {
         if ((errorsMask >> count) & 1) {
@@ -1047,7 +1048,7 @@ EXIT_APP:
     return 0;
 
 
-FORMAT_END:
+FORMAT_END: ;
     int count2 = 0;
     do {
         if ((errorsMask >> count2) & 1) {
@@ -1131,10 +1132,10 @@ MEMORY_DONE:
 
 
     Uint64 starttime;
-    double startphi, starttilt;
-    double phiLeftWaiting = phiLeft;
-    double axisTiltWaiting = axisTilt;
-    double rScaleWaiting = rScale;
+    long double startphi, starttilt;
+    long double phiLeftWaiting = phiLeft;
+    long double axisTiltWaiting = axisTilt;
+    long double rScaleWaiting = rScale;
 
     int newWidth, newHeight;
     int windowSizeChanged = 0;
@@ -1159,9 +1160,9 @@ MEMORY_DONE:
                             if (event.key.repeat == 0) {
                                 starttime = event.key.timestamp;
                                 startphi = phiLeft;
-                                phiLeftWaiting = fmod((startphi - stepSize) + PIDouble, PIDouble);
+                                phiLeftWaiting = fmodl((startphi - stepSize) + PIDouble, PIDouble);
                             } else {
-                                phiLeftWaiting = fmod((startphi - 24 * stepSize * (event.key.timestamp - starttime) / 10000) + PIDouble, PIDouble);
+                                phiLeftWaiting = fmodl((startphi - 24 * stepSize * (event.key.timestamp - starttime) / 10000) + PIDouble, PIDouble);
                             }
                             dir = SIDE;
                             break;
@@ -1170,9 +1171,9 @@ MEMORY_DONE:
                             if (event.key.repeat == 0) {
                                 starttime = event.key.timestamp;
                                 startphi = phiLeft;
-                                phiLeftWaiting = fmod(startphi + stepSize, PIDouble);
+                                phiLeftWaiting = fmodl(startphi + stepSize, PIDouble);
                             } else {
-                                phiLeftWaiting = fmod(startphi + 24 * stepSize * (event.key.timestamp - starttime) / 10000, PIDouble);
+                                phiLeftWaiting = fmodl(startphi + 24 * stepSize * (event.key.timestamp - starttime) / 10000, PIDouble);
                             }
                             dir = SIDE;
                             break;
@@ -1211,24 +1212,21 @@ MEMORY_DONE:
                         case SDLK_w:
                             if (event.key.repeat == 0) {
                                 starttime = event.key.timestamp;
-                                rScaleWaiting = rScale * 1.02;
+                                rScaleWaiting = rScale * 1.02L;
                             } else {
-                                rScaleWaiting = rScale * (1 + .05 * (event.key.timestamp - starttime) / 1000);
-                            }
-                            if (rScaleWaiting > 25505750.971244) {
-                                rScaleWaiting = 25505750.971244;
+                                rScaleWaiting = rScale * (1 + .05L * (event.key.timestamp - starttime) / 1000);
                             }
                             dir = ZIN;
                             break;
                         case SDLK_s:
                             if (event.key.repeat == 0) {
                                 starttime = event.key.timestamp;
-                                rScaleWaiting = rScale / 1.02;
+                                rScaleWaiting = rScale / 1.02L;
                             } else {
-                                rScaleWaiting = rScale * (1 - .05 * (event.key.timestamp - starttime) / 1000);
+                                rScaleWaiting = rScale * (1 - .05L * (event.key.timestamp - starttime) / 1000);
                             }
-                            if (rScaleWaiting < 64) {
-                                rScaleWaiting = 64;
+                            if (rScaleWaiting < 64L) {
+                                rScaleWaiting = 64L;
                             }
                             dir = ZOUT;
                             break;

@@ -11,4 +11,6 @@ SDL, libjpeg-turbo, c-hashmap
 (versions as of writing these lines)  
   
 # Windows application
-distribution compiled with Visual Studio 2022 17.7.4
+distribution compiled in Visual Studio 2022 17.7.4 with Intel C++ Compiler 2023
+see https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-10/use-the-intel-c-compiler-classic-math-library.html
+for compiler options regarding long double usage

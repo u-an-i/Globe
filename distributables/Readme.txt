@@ -1,7 +1,7 @@
 requires an online connection
 
 defaults to mapbox satellite maps requiring an access token
-(free as of writing this line)
+(free as of writing this line: https://account.mapbox.com/auth/signup)
 
 put access token / api key (=: key) into file mapservice-key.txt
 on first line, save as UTF-8 encoded Unicode text
@@ -24,9 +24,13 @@ save as UTF-8 encoded Unicode text
 
 control globe by W, A, S, D and arrow keys on keyboard
 
+if zooming closer results in a black image the map service
+does not support that zoom level
+
 the application not informs about failed retrieval of map tiles
 eg when the key is invalid, the window remains black in such case
 
 if the application does not start, you might need the Visual Studio 2022
 X64 Visual C(++) Redistributable you can find at
 https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist
+as of writing this line
