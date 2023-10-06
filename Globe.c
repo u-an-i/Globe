@@ -60,10 +60,12 @@ pt at(int x, int y)
         if (r2Sqr > 0.0L)
         {
             long double r2Sqrt = sqrtl(r2Sqr);
-            long double ySpace = r2Sqrt * sinl(asinl(yC / r2Sqrt) - axisTilt);
+            long double yC2 = yC / r2Sqrt;
+            long double cAT = cosl(axisTilt);
+            long double ySpace = r2Sqrt * (yC2 * cAT - copysignl(sqrtl((1 - yC2 * yC2) * (1 - cAT * cAT)), axisTilt));                  // == r2Sqrt * sinl(asinl(yC / r2Sqrt) - axisTilt);
             long double t = asinl(ySpace / rScale);
             long double p;
-            long double r2ScAT = r2Sqrt * cosl(axisTilt);
+            long double r2ScAT = r2Sqrt * cAT;
             long double s = ((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L;
             long double r3Sqr = rScaleSqr - ySpace * ySpace;
             if (r3Sqr > 0.0L)
@@ -109,11 +111,13 @@ pt getOffsetsFrom(int x, int y, pt sc) {
         if (r2Sqr > 0.0L)
         {
             long double r2Sqrt = sqrtl(r2Sqr);
-            long double axisTilt = asinl(yC / r2Sqrt) - asin(rScale * sin(sc.t) / r2Sqrt);
+            long double yC2 = yC / r2Sqrt;
+            long double axisTilt = asinl(yC2) - asinl(rScale * sinl(sc.t) / r2Sqrt);
             long double phiLeft;
-            long double r2ScAT = r2Sqrt * cosl(axisTilt);
+            long double cAT = cosl(axisTilt);
+            long double r2ScAT = r2Sqrt * cAT;
             long double s = ((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L;
-            long double ySpace = r2Sqrt * sinl(asinl(yC / r2Sqrt) - axisTilt);
+            long double ySpace = r2Sqrt * (yC2 * cAT - copysignl(sqrtl((1 - yC2 * yC2) * (1 - cAT * cAT)), axisTilt));
             long double r3Sqr = rScaleSqr - ySpace * ySpace;
             if (r3Sqr > 0.0L)
             {
@@ -158,11 +162,13 @@ pt getOffsetsFromWithRadius(int x, int y, pt sc, long double rScale) {
         if (r2Sqr > 0.0L)
         {
             long double r2Sqrt = sqrtl(r2Sqr);
-            long double axisTilt = asinl(yC / r2Sqrt) - asin(rScale * sin(sc.t) / r2Sqrt);
+            long double yC2 = yC / r2Sqrt;
+            long double axisTilt = asinl(yC2) - asinl(rScale * sinl(sc.t) / r2Sqrt);
             long double phiLeft;
-            long double r2ScAT = r2Sqrt * cosl(axisTilt);
+            long double cAT = cosl(axisTilt);
+            long double r2ScAT = r2Sqrt * cAT;
             long double s = ((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L;
-            long double ySpace = r2Sqrt * sinl(asinl(yC / r2Sqrt) - axisTilt);
+            long double ySpace = r2Sqrt * (yC2 * cAT - copysignl(sqrtl((1 - yC2 * yC2) * (1 - cAT * cAT)), axisTilt));
             long double r3Sqr = rScaleSqr - ySpace * ySpace;
             if (r3Sqr > 0.0L)
             {
@@ -250,10 +256,12 @@ ptF atF(int x, int y)
         if (r2Sqr > 0.0F)
         {
             float r2Sqrt = sqrtf(r2Sqr);
-            float ySpace = r2Sqrt * sinf(asinf(yC / r2Sqrt) - axisTiltF);
+            float yC2 = yC / r2Sqrt;
+            float cAT = cosf(axisTiltF);
+            float ySpace = r2Sqrt * (yC2 * cAT - copysignf(sqrtf((1 - yC2 * yC2) * (1 - cAT * cAT)), axisTiltF));                   // == r2Sqrt * sinf(asinf(yC / r2Sqrt) - axisTiltF);
             float t = asinf(ySpace / rScaleF);
             float p;
-            float r2ScAT = r2Sqrt * cosf(axisTiltF);
+            float r2ScAT = r2Sqrt * cAT;
             float s = ((axisTiltF > 0.0F && -yC > r2ScAT) || (axisTiltF < 0.0F && yC > r2ScAT)) ? -1.0F : 1.0F;
             float r3Sqr = rScaleSqrF - ySpace * ySpace;
             if (r3Sqr > 0.0F)
@@ -1780,50 +1788,50 @@ MEMORY_DONE:
                 default:
                     break;
             }
-            if (act && rastered && !dequeueing && notScheduled) {
-                notScheduled = 0;
-                if (dontWaitForCollector) {
-                    act = 0;
-                    phiLeft = phiLeftWaiting;
-                    axisTilt = axisTiltWaiting;
-                    axisTiltF = axisTilt;
-                    phiLeftF = phiLeft;
-                    if (rScale != rScaleWaiting) {
-                        rScale = rScaleWaiting;
-                        rScaleSqr = rScale * rScale;
-                        rScaleSqrF = rScaleSqr;
-                        rScaleF = rScale;
-                        determineZoomF();
-                    }
-                    queued = 0;
-                    for (int i = 0; i < maxThreads; ++i) {
-                        WaitForSingleObject(threadsData[i].hThread, INFINITE);
-                        CloseHandle(threadsData[i].hThread);
-                        threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < 16 ? rasterF : raster, (void*)&(threadsData[i]), 0, NULL);
-                        if (threadsData[i].hThread == 0) {
-                            notquitrequested = 0;
-                            goto AFTER_LOOP;
-                        }
-                    }
-                    if (!collecting) {
-                        doCollecting = 0;
-                        WaitForSingleObject(hCollector, INFINITE);
-                        CloseHandle(hCollector);
-                        doCollecting = 1;
-                        checkingImageRequests = 1;
-                        hCollector = (HANDLE)_beginthreadex(NULL, 0, collector, NULL, 0, NULL);
-                        if (hCollector == 0) {
-                            notquitrequested = 0;
-                            goto AFTER_LOOP;
-                        }
-                    }
-                }
-                else {
-                    notScheduled = 1;
-                }
-            }
         }
 
+        if (act && rastered && !dequeueing && notScheduled) {
+            notScheduled = 0;
+            if (dontWaitForCollector) {
+                act = 0;
+                phiLeft = phiLeftWaiting;
+                axisTilt = axisTiltWaiting;
+                axisTiltF = axisTilt;
+                phiLeftF = phiLeft;
+                if (rScale != rScaleWaiting) {
+                    rScale = rScaleWaiting;
+                    rScaleSqr = rScale * rScale;
+                    rScaleSqrF = rScaleSqr;
+                    rScaleF = rScale;
+                    determineZoomF();
+                }
+                queued = 0;
+                for (int i = 0; i < maxThreads; ++i) {
+                    WaitForSingleObject(threadsData[i].hThread, INFINITE);
+                    CloseHandle(threadsData[i].hThread);
+                    threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < 16 ? rasterF : raster, (void*)&(threadsData[i]), 0, NULL);
+                    if (threadsData[i].hThread == 0) {
+                        notquitrequested = 0;
+                        goto AFTER_LOOP;
+                    }
+                }
+                if (!collecting) {
+                    doCollecting = 0;
+                    WaitForSingleObject(hCollector, INFINITE);
+                    CloseHandle(hCollector);
+                    doCollecting = 1;
+                    checkingImageRequests = 1;
+                    hCollector = (HANDLE)_beginthreadex(NULL, 0, collector, NULL, 0, NULL);
+                    if (hCollector == 0) {
+                        notquitrequested = 0;
+                        goto AFTER_LOOP;
+                    }
+                }
+            }
+            else {
+                notScheduled = 1;
+            }
+        }
         if (!rastered) {
             int countRastering = 0;
             for (int i = 0; i < maxThreads; ++i) {
