@@ -62,7 +62,7 @@ pt at(int x, int y)
             long double r2Sqrt = sqrtl(r2Sqr);
             long double yC2 = yC / r2Sqrt;
             long double cAT = cosl(axisTilt);
-            long double ySpace = r2Sqrt * (yC2 * cAT - copysignl(sqrtl((1 - yC2 * yC2) * (1 - cAT * cAT)), axisTilt));                  // == r2Sqrt * sinl(asinl(yC / r2Sqrt) - axisTilt);
+            long double ySpace = r2Sqrt * (yC2 * cAT - copysignl(sqrtl((1.0L - yC2 * yC2) * (1.0L - cAT * cAT)), axisTilt));                    // == r2Sqrt * sinl(asinl(yC / r2Sqrt) - axisTilt);
             long double t = asinl(ySpace / rScale);
             long double p;
             long double r2ScAT = r2Sqrt * cAT;
@@ -112,12 +112,15 @@ pt getOffsetsFrom(int x, int y, pt sc) {
         {
             long double r2Sqrt = sqrtl(r2Sqr);
             long double yC2 = yC / r2Sqrt;
-            long double axisTilt = asinl(yC2) - asinl(rScale * sinl(sc.t) / r2Sqrt);
+            long double sT = sinl(sc.t);
+            long double arg2Sqr = rScaleSqr * sT * sT / r2Sqr;
+            long double arg1Co = 1.0L - yC2 * yC2;
+            long double axisTilt = asinl(yC2 * sqrtl(1.0L - arg2Sqr) - copysignl(sqrtl(arg2Sqr * arg1Co), sc.t));                   // == asinl(yC2) - asinl(rScale * sinl(sc.t) / r2Sqrt);
             long double phiLeft;
             long double cAT = cosl(axisTilt);
             long double r2ScAT = r2Sqrt * cAT;
             long double s = ((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L;
-            long double ySpace = r2Sqrt * (yC2 * cAT - copysignl(sqrtl((1 - yC2 * yC2) * (1 - cAT * cAT)), axisTilt));
+            long double ySpace = r2Sqrt * (yC2 * cAT - copysignl(sqrtl(arg1Co * (1.0L - cAT * cAT)), axisTilt));
             long double r3Sqr = rScaleSqr - ySpace * ySpace;
             if (r3Sqr > 0.0L)
             {
@@ -163,12 +166,15 @@ pt getOffsetsFromWithRadius(int x, int y, pt sc, long double rScale) {
         {
             long double r2Sqrt = sqrtl(r2Sqr);
             long double yC2 = yC / r2Sqrt;
-            long double axisTilt = asinl(yC2) - asinl(rScale * sinl(sc.t) / r2Sqrt);
+            long double sT = sinl(sc.t);
+            long double arg2Sqr = rScaleSqr * sT * sT / r2Sqr;
+            long double arg1Co = 1.0L - yC2 * yC2;
+            long double axisTilt = asinl(yC2 * sqrtl(1.0L - arg2Sqr) - copysignl(sqrtl(arg2Sqr * arg1Co), sc.t));                   // == asinl(yC2) - asinl(rScale * sinl(sc.t) / r2Sqrt);
             long double phiLeft;
             long double cAT = cosl(axisTilt);
             long double r2ScAT = r2Sqrt * cAT;
             long double s = ((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L;
-            long double ySpace = r2Sqrt * (yC2 * cAT - copysignl(sqrtl((1 - yC2 * yC2) * (1 - cAT * cAT)), axisTilt));
+            long double ySpace = r2Sqrt * (yC2 * cAT - copysignl(sqrtl(arg1Co * (1.0L - cAT * cAT)), axisTilt));
             long double r3Sqr = rScaleSqr - ySpace * ySpace;
             if (r3Sqr > 0.0L)
             {
@@ -212,8 +218,9 @@ void determineZoom() {
     int newZoom;
     long double newStepSize;
     if (middleLeft.t == 2.0L) {
-        newZoom = ceill(log2l(2 * rScale * 2 / rasterTileSize));
-        newStepSize = PIDouble / 48;
+        newZoom = ceill(log2l(rScale / rasterTileSize));        // == ceill(log2l(2 * rScale * 2 / rasterTileSize));
+        newZoom += 2;                                           // == above continued
+        newStepSize = PIDouble / 48.0L;
     } else {
         long double deltaP = at(WIDTH - 1, HEIGHT / 2).p - middleLeft.p;
         if (deltaP <= 0.0L) {
@@ -221,7 +228,7 @@ void determineZoom() {
         }
         long double pixelPerPhi = WIDTH / deltaP;
         newZoom = ceill(log2l(pixelPerPhi * PIDouble / rasterTileSize));
-        newStepSize = deltaP / 16;
+        newStepSize = deltaP / 16.0L;
     }
     if (newZoom >= 0 && newZoom <= 30) {
         zoom = newZoom;
@@ -258,7 +265,7 @@ ptF atF(int x, int y)
             float r2Sqrt = sqrtf(r2Sqr);
             float yC2 = yC / r2Sqrt;
             float cAT = cosf(axisTiltF);
-            float ySpace = r2Sqrt * (yC2 * cAT - copysignf(sqrtf((1 - yC2 * yC2) * (1 - cAT * cAT)), axisTiltF));                   // == r2Sqrt * sinf(asinf(yC / r2Sqrt) - axisTiltF);
+            float ySpace = r2Sqrt * (yC2 * cAT - copysignf(sqrtf((1.0F - yC2 * yC2) * (1.0F - cAT * cAT)), axisTiltF));                     // == r2Sqrt * sinf(asinf(yC / r2Sqrt) - axisTiltF);
             float t = asinf(ySpace / rScaleF);
             float p;
             float r2ScAT = r2Sqrt * cAT;
@@ -302,10 +309,11 @@ ptF atF(int x, int y)
 void determineZoomF() {
     ptF middleLeft = atF(0, HEIGHT / 2);
     int newZoom;
-    long double newStepSize;
+    float newStepSize;
     if (middleLeft.t == 2.0F) {
-        newZoom = ceilf(log2f(2 * rScaleF * 2 / rasterTileSize));
-        newStepSize = PIDouble / 48;
+        newZoom = ceilf(log2f(rScaleF / rasterTileSize));       // == ceilf(log2f(2 * rScaleF * 2 / rasterTileSize));
+        newZoom += 2;                                           // == above continued
+        newStepSize = PIDoubleF / 48.0F;
     }
     else {
         float deltaP = atF(WIDTH - 1, HEIGHT / 2).p - middleLeft.p;
@@ -314,11 +322,11 @@ void determineZoomF() {
         }
         float pixelPerPhi = WIDTH / deltaP;
         newZoom = ceilf(log2f(pixelPerPhi * PIDoubleF / rasterTileSize));
-        newStepSize = deltaP / 16;
+        newStepSize = deltaP / 16.0F;
     }
     if (newZoom >= 0 && newZoom <= 30) {
         zoom = newZoom;
-        stepSize = newStepSize;
+        stepSize = newStepSize;                                 // use non-float stepSize on purpose
     }
 }
 
