@@ -237,6 +237,75 @@ void determineZoom() {
 }
 
 
+const double PID = 3.141592653589793238462643383279;
+const double PIHalfD = 1.570796326794896619231321691639;
+const double PIDoubleD = 6.28318530717958647692528676655;
+
+double rScaleD;
+double rScaleSqrD;
+
+double phiLeftD = 0.0;
+double axisTiltD = 0.0;
+
+typedef struct PTD
+{
+    double p;
+    double t;
+} ptD;
+
+ptD atD(int x, int y)
+{
+    int xC = x - centerX;
+    int yC = y - centerY;
+    double r2Sqr = rScaleSqrD - xC * xC;
+    if (yC * yC <= r2Sqr)
+    {
+        if (r2Sqr > 0.0)
+        {
+            double r2Sqrt = sqrt(r2Sqr);
+            double yC2 = yC / r2Sqrt;
+            double cAT = cos(axisTiltD);
+            double ySpace = r2Sqrt * (yC2 * cAT - copysign(sqrt((1.0 - yC2 * yC2) * (1.0 - cAT * cAT)), axisTiltD));                     // == r2Sqrt * sin(asin(yC / r2Sqrt) - axisTiltD);
+            double t = asin(ySpace / rScaleD);
+            double p;
+            double r2ScAT = r2Sqrt * cAT;
+            double s = ((axisTiltD > 0.0 && -yC > r2ScAT) || (axisTiltD < 0.0 && yC > r2ScAT)) ? -1.0 : 1.0;
+            double r3Sqr = rScaleSqrD - ySpace * ySpace;
+            if (r3Sqr > 0.0)
+            {
+                p = phiLeftD + s * acos(-xC / sqrt(r3Sqr));
+            }
+            else
+            {
+                p = phiLeftD + s * PIHalfD;
+            }
+            p = fmod(p + PIDoubleD, PIDoubleD);
+            ptD value;
+            value.p = p;
+            value.t = t;
+            return value;
+        }
+        else
+        {
+            double p = phiLeftD;
+            if (xC > 0.0)
+            {
+                p += PID;
+            }
+            p = fmod(p + PIDoubleD, PIDoubleD);
+            ptD value;
+            value.p = p;
+            value.t = 0.0;
+            return value;
+        }
+    }
+    ptD value;
+    value.p = 0.0;
+    value.t = 2.0;
+    return value;
+}
+
+
 const float PIF = 3.141592653589793238462643383279F;
 const float PIHalfF = 1.570796326794896619231321691639F;
 const float PIDoubleF = 6.28318530717958647692528676655F;
@@ -928,6 +997,246 @@ LIKE_LNULL:
     return 0;
 }
 
+unsigned __stdcall rasterD(void* data) {
+    threadData* tData = (threadData*)data;
+    int yStart = tData->yStart;
+    int yEnd = tData->yEnd;
+    hashmap* imgQueue = hashmap_create();
+    tData->rastering = 1;
+    rastered = 0;
+    notScheduled = 1;
+    for (int y = yStart; y < yEnd; ++y) {
+        for (int x = 0; x < WIDTH; ++x) {
+            ptD angles = atD(x, y);
+            if (angles.t != 2.0) {
+                double amount = pow(2, zoom);
+                double xTile = angles.p * amount / PIDoubleD;
+                double yTile = (angles.t - -PIHalfD - .0001) * amount / PID;            // - .0001 = prevent exact 1 as result (values in image are [0,1), [ = including, ) = excluding )
+                int tileX = (int)xTile;                                                 // (int) floors towards 0
+                int tileY = (int)yTile;
+                char id[25];                                                            // maximum length of id incl. \0 at maximum zoom of 30
+                int length = sprintf_s(id, 25, idFormat, zoom, tileX, tileY);
+                if (length == 0) {
+                    length = 5;
+                    strcpy(id, "0/0/0");
+                    zoom = 0;
+                    xTile = angles.p / PIDoubleD;
+                    if (xTile < 0.0) {
+                        xTile = 0.0;
+                    }
+                    else if (xTile >= 1.0) {
+                        xTile = .9999;
+                    }
+                    yTile = (angles.t - -PIHalfD - .0001) / PID;
+                    if (yTile < 0.0) {
+                        yTile = 0.0;
+                    }
+                    else if (yTile >= 1.0) {
+                        yTile = .9999;
+                    }
+                    tileX = 0;
+                    tileY = 0;
+                }
+                int steps = 0;
+                int iXTile;
+                int iYTile;
+                uintptr_t result;
+                switch (dir) {
+                    case REFRESH:
+                    case ZIN:
+                    case ZOUT:
+                    case SIDE: {
+                        int z = zoom;
+                        double xTileI = xTile;
+                        double yTileI = yTile;
+                        int tileXI = tileX;
+                        int tileYI = tileY;
+                        char newId[25];
+                        char* key = id;
+                        int newLength = length;
+                        uintptr_t newResult;
+                        while (hashmap_get(imgPresent, (void*)key, newLength, &newResult) && newResult != (uintptr_t)NULL) {
+                            result = newResult;
+                            ++steps;
+                            iXTile = (int)((xTileI - tileXI) * rasterTileSize);
+                            iYTile = (int)((yTileI - tileYI) * rasterTileSize);
+                            break;                                                      // no break intended for ZIN, ZOUT, SIDE = get as detailed zoom as available uninterrupted from here but this costs too much framerate on Ryzen 5800X
+                            double amount = pow(2, ++z);
+                            xTileI = angles.p * amount / PIDoubleD;
+                            yTileI = (angles.t - -PIHalfD - .0001) * amount / PID;
+                            tileXI = (int)xTileI;
+                            tileYI = (int)yTileI;
+                            newLength = sprintf_s(newId, 25, idFormat, z, tileXI, tileYI);
+                            if (newLength == 0) {
+                                break;
+                            }
+                            key = newId;
+                        }
+                        break;
+                    }
+                    case INIT:
+                    default:
+                        break;
+                }
+                if (steps > 0)
+                {
+                    pixel p;
+                    p.sourceX = iXTile;
+                    p.sourceY = iYTile;
+                    p.targetX = x;
+                    p.targetY = y;
+                    pickPixel(&p, (unsigned char*)result);
+                    continue;
+                }
+                else {
+                    int iXTile = (int)((xTile - tileX) * rasterTileSize);
+                    int iYTile = (int)((yTile - tileY) * rasterTileSize);
+
+                    int picked = 0;
+                    switch (dir) {
+                        case ZIN:
+                        case SIDE:
+                            if (zoom > 0) {
+                                double amount = pow(2, zoom - 1);
+                                double xTile = angles.p * amount / PIDoubleD;
+                                double yTile = (angles.t - -PIHalfD - .0001) * amount / PID;
+                                int tileX = (int)xTile;
+                                int tileY = (int)yTile;
+                                char id[25];
+                                int length = sprintf_s(id, 25, idFormat, zoom - 1, tileX, tileY);
+                                if (length == 0) {
+                                    length = 5;
+                                    strcpy(id, "0/0/0");
+                                    xTile = angles.p / PIDoubleD;
+                                    if (xTile < 0.0) {
+                                        xTile = 0.0;
+                                    }
+                                    else if (xTile >= 1.0) {
+                                        xTile = .9999;
+                                    }
+                                    yTile = (angles.t - -PIHalfD - .0001) / PID;
+                                    if (yTile < 0.0) {
+                                        yTile = 0.0;
+                                    }
+                                    else if (yTile >= 1.0) {
+                                        yTile = .9999;
+                                    }
+                                    tileX = 0;
+                                    tileY = 0;
+                                }
+                                uintptr_t result;
+                                if (hashmap_get(imgPresent, (void*)id, length, &result) && result != (uintptr_t)NULL) {
+                                    pixel p;
+                                    p.sourceX = (int)((xTile - tileX) * rasterTileSize);
+                                    p.sourceY = (int)((yTile - tileY) * rasterTileSize);
+                                    p.targetX = x;
+                                    p.targetY = y;
+                                    pickPixel(&p, (unsigned char*)result);
+                                    picked = 1;
+                                }
+                            }
+                            break;
+                        case ZOUT:
+                        case INIT:
+                        case REFRESH:
+                        default:
+                            break;
+                    }
+                    if (!picked) {
+                        memcpy((void*)(((unsigned char*)buffer) + (y * pitch + x * 3)), (void*)zero3, 3);
+                    }
+
+                    if (imgQueue != NULL) {
+                        pixel* p = malloc(sizeof(pixel));
+                        uintptr_t result;
+                        if (hashmap_get(imgQueue, (void*)id, length, &result)) {
+                            if (p != NULL) {
+                                p->sourceX = iXTile;
+                                p->sourceY = iYTile;
+                                p->targetX = x;
+                                p->targetY = y;
+                                link* l = malloc(sizeof(link));
+                                if (l != NULL) {
+                                    l->p = p;
+                                    l->l = (link*)result;
+                                    hashmap_set(imgQueue, (void*)id, length, (uintptr_t)l);
+                                    continue;
+                                }
+                                else {
+                                    free(p);
+                                }
+                            }
+                        }
+                        else {
+                            if (p != NULL) {
+                                p->sourceX = iXTile;
+                                p->sourceY = iYTile;
+                                p->targetX = x;
+                                p->targetY = y;
+                                link* l = malloc(sizeof(link));
+                                if (l != NULL) {
+                                    l->p = p;
+                                    l->l = NULL;
+                                    char* pId = malloc(length);
+                                    if (pId != NULL) {
+                                        idData* lastRequest = NULL;
+                                        idData* request = &(tData->dId);
+                                        while (request->idLength != 0) {
+                                            if (request->next != NULL) {
+                                                request = request->next;
+                                            }
+                                            else {
+                                                idData* newRequest = malloc(sizeof(idData));
+                                                if (newRequest == NULL) {
+                                                    free(pId);
+                                                    goto LIKE_LNULLD;
+                                                }
+                                                newRequest->next = NULL;
+                                                lastRequest = request;
+                                                request = newRequest;
+                                                break;
+                                            }
+                                        }
+                                        memcpy(request->id, id, length + 1);
+                                        request->idLength = length;
+                                        if (lastRequest != NULL) {
+                                            lastRequest->next = request;
+                                        }
+                                        memcpy(pId, id, length);
+                                        hashmap_set(imgQueue, (void*)pId, length, (uintptr_t)l);
+                                        queued = 1;
+                                        tData->imageRequestRequested = 1;
+                                        continue;
+                                    }
+                                    else {
+LIKE_LNULLD:
+                                        free(l);
+                                        free(p);
+                                    }
+                                }
+                                else {
+                                    free(p);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            else {
+                memcpy((void*)(((unsigned char*)buffer) + (y * pitch + x * 3)), (void*)zero3, 3);
+            }
+        }
+    }
+    //memcpy(((unsigned char*)region) + yStart * pitch, ((unsigned char*)buffer) + yStart * pitch, pitch * (yEnd - yStart));                            // copy all once in main thread appears to be faster than copy parts parallely from threads
+    if (tData->lastQueue != NULL) {
+        hashmap_iterate(tData->lastQueue, clearQueue, NULL);
+        hashmap_free(tData->lastQueue);
+    }
+    tData->lastQueue = imgQueue;
+    tData->rastering = 0;
+    return 0;
+}
+
 unsigned __stdcall rasterF(void* data) {
     threadData* tData = (threadData*)data;
     int yStart = tData->yStart;
@@ -973,41 +1282,41 @@ unsigned __stdcall rasterF(void* data) {
                 int iYTile;
                 uintptr_t result;
                 switch (dir) {
-                case REFRESH:
-                case ZIN:
-                case ZOUT:
-                case SIDE: {
-                    int z = zoom;
-                    float xTileI = xTile;
-                    float yTileI = yTile;
-                    int tileXI = tileX;
-                    int tileYI = tileY;
-                    char newId[25];
-                    char* key = id;
-                    int newLength = length;
-                    uintptr_t newResult;
-                    while (hashmap_get(imgPresent, (void*)key, newLength, &newResult) && newResult != (uintptr_t)NULL) {
-                        result = newResult;
-                        ++steps;
-                        iXTile = (int)((xTileI - tileXI) * rasterTileSize);
-                        iYTile = (int)((yTileI - tileYI) * rasterTileSize);
-                        break;                                                      // no break intended for ZIN, ZOUT, SIDE = get as detailed zoom as available uninterrupted from here but this costs too much framerate on Ryzen 5800X
-                        float amount = pow(2, ++z);
-                        xTileI = angles.p * amount / PIDoubleF;
-                        yTileI = (angles.t - -PIHalfF - .0001F) * amount / PIF;
-                        tileXI = (int)xTileI;
-                        tileYI = (int)yTileI;
-                        newLength = sprintf_s(newId, 25, idFormat, z, tileXI, tileYI);
-                        if (newLength == 0) {
-                            break;
+                    case REFRESH:
+                    case ZIN:
+                    case ZOUT:
+                    case SIDE: {
+                        int z = zoom;
+                        float xTileI = xTile;
+                        float yTileI = yTile;
+                        int tileXI = tileX;
+                        int tileYI = tileY;
+                        char newId[25];
+                        char* key = id;
+                        int newLength = length;
+                        uintptr_t newResult;
+                        while (hashmap_get(imgPresent, (void*)key, newLength, &newResult) && newResult != (uintptr_t)NULL) {
+                            result = newResult;
+                            ++steps;
+                            iXTile = (int)((xTileI - tileXI) * rasterTileSize);
+                            iYTile = (int)((yTileI - tileYI) * rasterTileSize);
+                            break;                                                      // no break intended for ZIN, ZOUT, SIDE = get as detailed zoom as available uninterrupted from here but this costs too much framerate on Ryzen 5800X
+                            float amount = pow(2, ++z);
+                            xTileI = angles.p * amount / PIDoubleF;
+                            yTileI = (angles.t - -PIHalfF - .0001F) * amount / PIF;
+                            tileXI = (int)xTileI;
+                            tileYI = (int)yTileI;
+                            newLength = sprintf_s(newId, 25, idFormat, z, tileXI, tileYI);
+                            if (newLength == 0) {
+                                break;
+                            }
+                            key = newId;
                         }
-                        key = newId;
+                        break;
                     }
-                    break;
-                }
-                case INIT:
-                default:
-                    break;
+                    case INIT:
+                    default:
+                        break;
                 }
                 if (steps > 0)
                 {
@@ -1025,53 +1334,53 @@ unsigned __stdcall rasterF(void* data) {
 
                     int picked = 0;
                     switch (dir) {
-                    case ZIN:
-                    case SIDE:
-                        if (zoom > 0) {
-                            float amount = pow(2, zoom - 1);
-                            float xTile = angles.p * amount / PIDoubleF;
-                            float yTile = (angles.t - -PIHalfF - .0001F) * amount / PIF;
-                            int tileX = (int)xTile;
-                            int tileY = (int)yTile;
-                            char id[25];
-                            int length = sprintf_s(id, 25, idFormat, zoom - 1, tileX, tileY);
-                            if (length == 0) {
-                                length = 5;
-                                strcpy(id, "0/0/0");
-                                xTile = angles.p / PIDoubleF;
-                                if (xTile < 0.0F) {
-                                    xTile = 0.0F;
+                        case ZIN:
+                        case SIDE:
+                            if (zoom > 0) {
+                                float amount = pow(2, zoom - 1);
+                                float xTile = angles.p * amount / PIDoubleF;
+                                float yTile = (angles.t - -PIHalfF - .0001F) * amount / PIF;
+                                int tileX = (int)xTile;
+                                int tileY = (int)yTile;
+                                char id[25];
+                                int length = sprintf_s(id, 25, idFormat, zoom - 1, tileX, tileY);
+                                if (length == 0) {
+                                    length = 5;
+                                    strcpy(id, "0/0/0");
+                                    xTile = angles.p / PIDoubleF;
+                                    if (xTile < 0.0F) {
+                                        xTile = 0.0F;
+                                    }
+                                    else if (xTile >= 1.0F) {
+                                        xTile = .9999F;
+                                    }
+                                    yTile = (angles.t - -PIHalfF - .0001F) / PIF;
+                                    if (yTile < 0.0F) {
+                                        yTile = 0.0F;
+                                    }
+                                    else if (yTile >= 1.0F) {
+                                        yTile = .9999F;
+                                    }
+                                    tileX = 0;
+                                    tileY = 0;
                                 }
-                                else if (xTile >= 1.0F) {
-                                    xTile = .9999F;
+                                uintptr_t result;
+                                if (hashmap_get(imgPresent, (void*)id, length, &result) && result != (uintptr_t)NULL) {
+                                    pixel p;
+                                    p.sourceX = (int)((xTile - tileX) * rasterTileSize);
+                                    p.sourceY = (int)((yTile - tileY) * rasterTileSize);
+                                    p.targetX = x;
+                                    p.targetY = y;
+                                    pickPixel(&p, (unsigned char*)result);
+                                    picked = 1;
                                 }
-                                yTile = (angles.t - -PIHalfF - .0001F) / PIF;
-                                if (yTile < 0.0F) {
-                                    yTile = 0.0F;
-                                }
-                                else if (yTile >= 1.0F) {
-                                    yTile = .9999F;
-                                }
-                                tileX = 0;
-                                tileY = 0;
                             }
-                            uintptr_t result;
-                            if (hashmap_get(imgPresent, (void*)id, length, &result) && result != (uintptr_t)NULL) {
-                                pixel p;
-                                p.sourceX = (int)((xTile - tileX) * rasterTileSize);
-                                p.sourceY = (int)((yTile - tileY) * rasterTileSize);
-                                p.targetX = x;
-                                p.targetY = y;
-                                pickPixel(&p, (unsigned char*)result);
-                                picked = 1;
-                            }
-                        }
-                        break;
-                    case ZOUT:
-                    case INIT:
-                    case REFRESH:
-                    default:
-                        break;
+                            break;
+                        case ZOUT:
+                        case INIT:
+                        case REFRESH:
+                        default:
+                            break;
                     }
                     if (!picked) {
                         memcpy((void*)(((unsigned char*)buffer) + (y * pitch + x * 3)), (void*)zero3, 3);
@@ -1563,7 +1872,7 @@ MEMORY_DONE:
     for (int i = 0; i < maxThreads; ++i) {
         threadsData[i].yStart = (i * HEIGHT) / maxThreads;
         threadsData[i].yEnd = ((i + 1) * HEIGHT) / maxThreads;
-        threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < 16 ? rasterF : raster, (void*)&(threadsData[i]), 0, NULL);
+        threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
         if (threadsData[i].hThread == 0) {
             notquitrequested = 0;
         }
@@ -1806,18 +2115,22 @@ MEMORY_DONE:
                 axisTilt = axisTiltWaiting;
                 axisTiltF = axisTilt;
                 phiLeftF = phiLeft;
+                axisTiltD = axisTilt;
+                phiLeftD = phiLeft;
                 if (rScale != rScaleWaiting) {
                     rScale = rScaleWaiting;
                     rScaleSqr = rScale * rScale;
                     rScaleSqrF = rScaleSqr;
                     rScaleF = rScale;
+                    rScaleSqrD = rScaleSqr;
+                    rScaleD = rScale;
                     determineZoomF();
                 }
                 queued = 0;
                 for (int i = 0; i < maxThreads; ++i) {
                     WaitForSingleObject(threadsData[i].hThread, INFINITE);
                     CloseHandle(threadsData[i].hThread);
-                    threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < 16 ? rasterF : raster, (void*)&(threadsData[i]), 0, NULL);
+                    threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
                     if (threadsData[i].hThread == 0) {
                         notquitrequested = 0;
                         goto AFTER_LOOP;
@@ -1931,8 +2244,12 @@ MEMORY_DONE:
                     rScaleSqr = rScale * rScale;
                     rScaleSqrF = rScaleSqr;
                     rScaleF = rScale;
+                    rScaleSqrD = rScaleSqr;
+                    rScaleD = rScale;
                     axisTiltF = axisTilt;
                     phiLeftF = phiLeft;
+                    axisTiltD = axisTilt;
+                    phiLeftD = phiLeft;
                     determineZoomF();
                     queued = 0;
                     for (int i = 0; i < maxThreads; ++i) {
@@ -1948,7 +2265,7 @@ MEMORY_DONE:
                     for (int i = 0; i < maxThreads; ++i) {
                         threadsData[i].yStart = (i * HEIGHT) / maxThreads;
                         threadsData[i].yEnd = ((i + 1) * HEIGHT) / maxThreads;
-                        threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < 16 ? rasterF : raster, (void*)&(threadsData[i]), 0, NULL);
+                        threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
                         if (threadsData[i].hThread == 0) {
                             notquitrequested = 0;
                             maxThreads = i;
