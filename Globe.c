@@ -57,12 +57,12 @@ pt at(int x, int y)
     long double r2Sqr = rScaleSqr - xC * xC;
     if (yC * yC <= r2Sqr)
     {
-        long double p, t;
         if (r2Sqr > 0.0L)
         {
             long double r2Sqrt = sqrtl(r2Sqr);
             long double ySpace = r2Sqrt * sinl(asinl(yC / r2Sqrt) - axisTilt);
-            t = asinl(ySpace / rScale);
+            long double t = asinl(ySpace / rScale);
+            long double p;
             long double r2ScAT = r2Sqrt * cosl(axisTilt);
             long double s = ((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L;
             long double r3Sqr = rScaleSqr - ySpace * ySpace;
@@ -82,8 +82,7 @@ pt at(int x, int y)
         }
         else
         {
-            t = 0.0L;
-            p = phiLeft;
+            long double p = phiLeft;
             if (xC > 0.0L)
             {
                 p += PI;
@@ -91,7 +90,104 @@ pt at(int x, int y)
             p = fmodl(p + PIDouble, PIDouble);
             pt value;
             value.p = p;
-            value.t = t;
+            value.t = 0.0L;
+            return value;
+        }
+    }
+    pt value;
+    value.p = 0.0L;
+    value.t = 2.0L;
+    return value;
+}
+
+pt getOffsetsFrom(int x, int y, pt sc) {
+    int xC = x - centerX;
+    int yC = y - centerY;
+    long double r2Sqr = rScaleSqr - xC * xC;
+    if (yC * yC <= r2Sqr)
+    {
+        if (r2Sqr > 0.0L)
+        {
+            long double r2Sqrt = sqrtl(r2Sqr);
+            long double axisTilt = asinl(yC / r2Sqrt) - asin(rScale * sin(sc.t) / r2Sqrt);
+            long double phiLeft;
+            long double r2ScAT = r2Sqrt * cosl(axisTilt);
+            long double s = ((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L;
+            long double ySpace = r2Sqrt * sinl(asinl(yC / r2Sqrt) - axisTilt);
+            long double r3Sqr = rScaleSqr - ySpace * ySpace;
+            if (r3Sqr > 0.0L)
+            {
+                phiLeft = sc.p - s * acosl(-xC / sqrtl(r3Sqr));
+            }
+            else
+            {
+                phiLeft = sc.p - s * PIHalf;
+            }
+            phiLeft = fmodl(phiLeft + PIDouble, PIDouble);
+            pt value;
+            value.p = phiLeft;
+            value.t = axisTilt;
+            return value;
+        } 
+        else {
+            long double phiLeft = sc.p;
+            if (xC > 0.0L)
+            {
+                phiLeft -= PI;
+            }
+            phiLeft = fmodl(phiLeft + PIDouble, PIDouble);
+            pt value;
+            value.p = phiLeft;
+            value.t = 0.0L;
+            return value;
+        }
+    }
+    pt value;
+    value.p = 0.0L;
+    value.t = 2.0L;
+    return value;
+}
+
+pt getOffsetsFromWithRadius(int x, int y, pt sc, long double rScale) {
+    int xC = x - centerX;
+    int yC = y - centerY;
+    long double rScaleSqr = rScale * rScale;
+    long double r2Sqr = rScaleSqr - xC * xC;
+    if (yC * yC <= r2Sqr)
+    {
+        if (r2Sqr > 0.0L)
+        {
+            long double r2Sqrt = sqrtl(r2Sqr);
+            long double axisTilt = asinl(yC / r2Sqrt) - asin(rScale * sin(sc.t) / r2Sqrt);
+            long double phiLeft;
+            long double r2ScAT = r2Sqrt * cosl(axisTilt);
+            long double s = ((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L;
+            long double ySpace = r2Sqrt * sinl(asinl(yC / r2Sqrt) - axisTilt);
+            long double r3Sqr = rScaleSqr - ySpace * ySpace;
+            if (r3Sqr > 0.0L)
+            {
+                phiLeft = sc.p - s * acosl(-xC / sqrtl(r3Sqr));
+            }
+            else
+            {
+                phiLeft = sc.p - s * PIHalf;
+            }
+            phiLeft = fmodl(phiLeft + PIDouble, PIDouble);
+            pt value;
+            value.p = phiLeft;
+            value.t = axisTilt;
+            return value;
+        }
+        else {
+            long double phiLeft = sc.p;
+            if (xC > 0.0L)
+            {
+                phiLeft -= PI;
+            }
+            phiLeft = fmodl(phiLeft + PIDouble, PIDouble);
+            pt value;
+            value.p = phiLeft;
+            value.t = 0.0L;
             return value;
         }
     }
@@ -127,6 +223,7 @@ void determineZoom() {
     }
 }
 
+
 const float PIF = 3.141592653589793238462643383279F;
 const float PIHalfF = 1.570796326794896619231321691639F;
 const float PIDoubleF = 6.28318530717958647692528676655F;
@@ -150,12 +247,12 @@ ptF atF(int x, int y)
     float r2Sqr = rScaleSqrF - xC * xC;
     if (yC * yC <= r2Sqr)
     {
-        float p, t;
         if (r2Sqr > 0.0F)
         {
             float r2Sqrt = sqrtf(r2Sqr);
             float ySpace = r2Sqrt * sinf(asinf(yC / r2Sqrt) - axisTiltF);
-            t = asinf(ySpace / rScaleF);
+            float t = asinf(ySpace / rScaleF);
+            float p;
             float r2ScAT = r2Sqrt * cosf(axisTiltF);
             float s = ((axisTiltF > 0.0F && -yC > r2ScAT) || (axisTiltF < 0.0F && yC > r2ScAT)) ? -1.0F : 1.0F;
             float r3Sqr = rScaleSqrF - ySpace * ySpace;
@@ -175,8 +272,7 @@ ptF atF(int x, int y)
         }
         else
         {
-            t = 0.0F;
-            p = phiLeftF;
+            float p = phiLeftF;
             if (xC > 0.0F)
             {
                 p += PIF;
@@ -184,7 +280,7 @@ ptF atF(int x, int y)
             p = fmodf(p + PIDoubleF, PIDoubleF);
             ptF value;
             value.p = p;
-            value.t = t;
+            value.t = 0.0F;
             return value;
         }
     }
@@ -1188,6 +1284,7 @@ int main(int argc, char* argv[])
     SDL_Quit();
     return 0;
 
+
 SDL_STARTED:
     centerX = WIDTH / 2;
     centerY = HEIGHT / 2;
@@ -1470,12 +1567,38 @@ MEMORY_DONE:
     long double axisTiltWaiting = axisTilt;
     long double rScaleWaiting = rScale;
 
+    pt clicked;
+    int mousedown = 0;
+    int mouseX = centerX, mouseY = centerY;
+
+    int act = 0;
+
     int newWidth, newHeight;
     int windowSizeChanged = 0;
 
     int dequeueing = 0;
 
     int nonRequestedExit = 1;
+
+    int x, y;
+    SDL_GetWindowPosition(window, &x, &y);
+    SDL_WarpMouseGlobal(x + centerX, y + centerY);
+    INPUT fakeFirstClick[2];
+    fakeFirstClick[0].type = INPUT_MOUSE;
+    fakeFirstClick[0].mi.dx = 0;
+    fakeFirstClick[0].mi.dy = 0;
+    fakeFirstClick[0].mi.mouseData = 0;
+    fakeFirstClick[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+    fakeFirstClick[0].mi.time = 0;
+    fakeFirstClick[0].mi.dwExtraInfo = (ULONG_PTR)NULL;
+    fakeFirstClick[1].type = INPUT_MOUSE;
+    fakeFirstClick[1].mi.dx = 0;
+    fakeFirstClick[1].mi.dy = 0;
+    fakeFirstClick[1].mi.mouseData = 0;
+    fakeFirstClick[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
+    fakeFirstClick[1].mi.time = 0;
+    fakeFirstClick[1].mi.dwExtraInfo = (ULONG_PTR)NULL;
+    SendInput(2, fakeFirstClick, sizeof(INPUT));
 
     SDL_Event event;
     while (notquitrequested) {
@@ -1567,53 +1690,80 @@ MEMORY_DONE:
                             dir = REFRESH;
                             break;
                     }
-                    if (rastered && !dequeueing && notScheduled) {
-                        notScheduled = 0;
-                        if (dontWaitForCollector) {
-                            phiLeft = phiLeftWaiting;
-                            axisTilt = axisTiltWaiting;
-                            axisTiltF = axisTilt;
-                            phiLeftF = phiLeft;
-                            if (rScale != rScaleWaiting) {
-                                rScale = rScaleWaiting;
-                                rScaleSqr = rScale * rScale;
-                                rScaleSqrF = rScaleSqr;
-                                rScaleF = rScale;
-                                determineZoomF();
-                            }
-                            queued = 0;
-                            for (int i = 0; i < maxThreads; ++i) {
-                                WaitForSingleObject(threadsData[i].hThread, INFINITE);
-                                CloseHandle(threadsData[i].hThread);
-                                threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < 16 ? rasterF : raster, (void*)&(threadsData[i]), 0, NULL);
-                                if (threadsData[i].hThread == 0) {
-                                    notquitrequested = 0;
-                                    goto AFTER_LOOP;
-                                }
-                            }
-                            if (!collecting) {
-                                doCollecting = 0;
-                                WaitForSingleObject(hCollector, INFINITE);
-                                CloseHandle(hCollector);
-                                doCollecting = 1;
-                                checkingImageRequests = 1;
-                                hCollector = (HANDLE)_beginthreadex(NULL, 0, collector, NULL, 0, NULL);
-                                if (hCollector == 0) {
-                                    notquitrequested = 0;
-                                    goto AFTER_LOOP;
-                                }
-                            }
-                        }
-                        else {
-                            notScheduled = 1;
-                        }
-                    }
+                    act = 1;
                     break;
                 case SDL_KEYUP:
                     starttime = event.key.timestamp;
                     startphi = phiLeft;
                     starttilt = axisTilt;
                     break;
+                case SDL_MOUSEBUTTONDOWN: {
+                    clicked = at(event.button.x, event.button.y);
+                    if (clicked.t != 2.0L) {
+                        pt center = at(centerX, centerY);
+                        phiLeftWaiting = phiLeft + (clicked.p - center.p);
+                        axisTiltWaiting = axisTilt - (clicked.t - center.t);
+                        mousedown = 1;
+                    }
+                    break;
+                }
+                case SDL_MOUSEMOTION: {
+                    if (mousedown && !act) {
+                        pt offsets = getOffsetsFrom(event.motion.x, event.motion.y, clicked);
+                        if (offsets.t != 2.0L) {
+                            phiLeftWaiting = offsets.p;
+                            axisTiltWaiting = offsets.t;
+                            if (axisTiltWaiting < -PIHalf) {
+                                axisTiltWaiting = -PIHalf;
+                            } else if (axisTiltWaiting > PIHalf) {
+                                axisTiltWaiting = PIHalf;
+                            }
+                            dir = REFRESH;
+                            act = 1;
+                        }
+                    }
+                    mouseX = event.motion.x;
+                    mouseY = event.motion.y;
+                    break;
+                }
+                case SDL_MOUSEBUTTONUP: {
+                    mousedown = 0;
+                    dir = REFRESH;
+                    act = 1;
+                    break;
+                }
+                case SDL_MOUSEWHEEL: {
+                    pt target = at(mouseX, mouseY);
+                    if (target.t != 2.0L) {
+                        if ((event.wheel.direction == SDL_MOUSEWHEEL_NORMAL ? 1 : -1) * event.wheel.y > 0) {
+                            rScaleWaiting = rScale * 1.2L;
+                            dir = ZIN;
+                        }
+                        else {
+                            rScaleWaiting = rScale / 1.2L;
+                            if (rScaleWaiting < 64L) {
+                                rScaleWaiting = 64L;
+                            }
+                            dir = ZOUT;
+                        }
+                        target = getOffsetsFromWithRadius(mouseX, mouseY, target, rScaleWaiting);
+                        if (target.t != 2.0L) {
+                            phiLeftWaiting = target.p;
+                            axisTiltWaiting = target.t;
+                            if (axisTiltWaiting < -PIHalf) {
+                                axisTiltWaiting = -PIHalf;
+                            }
+                            else if (axisTiltWaiting > PIHalf) {
+                                axisTiltWaiting = PIHalf;
+                            }
+                            act = 1;
+                        }
+                        else {
+                            rScaleWaiting = rScale;
+                        }
+                    }
+                    break;
+                }
                 case SDL_WINDOWEVENT:
                     if (event.window.windowID == windowID) {
                         switch (event.window.event) {
@@ -1629,6 +1779,48 @@ MEMORY_DONE:
                     break;
                 default:
                     break;
+            }
+            if (act && rastered && !dequeueing && notScheduled) {
+                notScheduled = 0;
+                if (dontWaitForCollector) {
+                    act = 0;
+                    phiLeft = phiLeftWaiting;
+                    axisTilt = axisTiltWaiting;
+                    axisTiltF = axisTilt;
+                    phiLeftF = phiLeft;
+                    if (rScale != rScaleWaiting) {
+                        rScale = rScaleWaiting;
+                        rScaleSqr = rScale * rScale;
+                        rScaleSqrF = rScaleSqr;
+                        rScaleF = rScale;
+                        determineZoomF();
+                    }
+                    queued = 0;
+                    for (int i = 0; i < maxThreads; ++i) {
+                        WaitForSingleObject(threadsData[i].hThread, INFINITE);
+                        CloseHandle(threadsData[i].hThread);
+                        threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < 16 ? rasterF : raster, (void*)&(threadsData[i]), 0, NULL);
+                        if (threadsData[i].hThread == 0) {
+                            notquitrequested = 0;
+                            goto AFTER_LOOP;
+                        }
+                    }
+                    if (!collecting) {
+                        doCollecting = 0;
+                        WaitForSingleObject(hCollector, INFINITE);
+                        CloseHandle(hCollector);
+                        doCollecting = 1;
+                        checkingImageRequests = 1;
+                        hCollector = (HANDLE)_beginthreadex(NULL, 0, collector, NULL, 0, NULL);
+                        if (hCollector == 0) {
+                            notquitrequested = 0;
+                            goto AFTER_LOOP;
+                        }
+                    }
+                }
+                else {
+                    notScheduled = 1;
+                }
             }
         }
 

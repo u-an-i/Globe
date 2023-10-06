@@ -22,7 +22,7 @@ replace z/x/y map tile identifying url part by ^^,
 if required, replace key url part by <<,
 save as UTF-8 encoded Unicode text
 
-control globe by W, A, S, D and arrow keys on keyboard
+control globe by W, A, S, D and arrow keys on keyboard and your mouse
 
 if zooming closer results in a black image the map service
 does not support that zoom level
