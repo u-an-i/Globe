@@ -63,35 +63,17 @@ pt at(int x, int y)
             long double yC2 = yC / r2Sqrt;
             long double cAT = cosl(axisTilt);
             long double ySpace = r2Sqrt * (yC2 * cAT - copysignl(sqrtl((1.0L - yC2 * yC2) * (1.0L - cAT * cAT)), axisTilt));                    // == r2Sqrt * sinl(asinl(yC / r2Sqrt) - axisTilt);
-            long double t = asinl(ySpace / rScale);
-            long double p;
             long double r2ScAT = r2Sqrt * cAT;
-            long double s = ((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L;
             long double r3Sqr = rScaleSqr - ySpace * ySpace;
-            if (r3Sqr > 0.0L)
-            {
-                p = phiLeft + s * acosl(-xC / sqrtl(r3Sqr));
-            }
-            else
-            {
-                p = phiLeft + s * PIHalf;
-            }
-            p = fmodl(p + PIDouble, PIDouble);
             pt value;
-            value.p = p;
-            value.t = t;
+            value.p = fmodl(phiLeft + (((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L) * (r3Sqr > 0.0L ? acosl(-xC / sqrtl(r3Sqr)) : PIHalf) + PIDouble, PIDouble);
+            value.t = asinl(ySpace / rScale);
             return value;
         }
         else
         {
-            long double p = phiLeft;
-            if (xC > 0.0L)
-            {
-                p += PI;
-            }
-            p = fmodl(p + PIDouble, PIDouble);
             pt value;
-            value.p = p;
+            value.p = fmodl(phiLeft + (xC > 0.0L ? PI : 0.0L) + PIDouble, PIDouble);
             value.t = 0.0L;
             return value;
         }
@@ -116,35 +98,18 @@ pt getOffsetsFrom(int x, int y, pt sc) {
             long double arg2Sqr = rScaleSqr * sT * sT / r2Sqr;
             long double arg1Co = 1.0L - yC2 * yC2;
             long double axisTilt = asinl(yC2 * sqrtl(1.0L - arg2Sqr) - copysignl(sqrtl(arg2Sqr * arg1Co), sc.t));                   // == asinl(yC2) - asinl(rScale * sinl(sc.t) / r2Sqrt);
-            long double phiLeft;
             long double cAT = cosl(axisTilt);
             long double r2ScAT = r2Sqrt * cAT;
-            long double s = ((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L;
             long double ySpace = r2Sqrt * (yC2 * cAT - copysignl(sqrtl(arg1Co * (1.0L - cAT * cAT)), axisTilt));
             long double r3Sqr = rScaleSqr - ySpace * ySpace;
-            if (r3Sqr > 0.0L)
-            {
-                phiLeft = sc.p - s * acosl(-xC / sqrtl(r3Sqr));
-            }
-            else
-            {
-                phiLeft = sc.p - s * PIHalf;
-            }
-            phiLeft = fmodl(phiLeft + PIDouble, PIDouble);
             pt value;
-            value.p = phiLeft;
+            value.p = fmodl((sc.p - (((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L) * (r3Sqr > 0.0L ? acosl(-xC / sqrtl(r3Sqr)) : PIHalf)) + PIDouble, PIDouble);
             value.t = axisTilt;
             return value;
         } 
         else {
-            long double phiLeft = sc.p;
-            if (xC > 0.0L)
-            {
-                phiLeft -= PI;
-            }
-            phiLeft = fmodl(phiLeft + PIDouble, PIDouble);
             pt value;
-            value.p = phiLeft;
+            value.p = fmodl(sc.p - (xC > 0.0L ? PI : 0.0L) + PIDouble, PIDouble);
             value.t = 0.0L;
             return value;
         }
@@ -170,35 +135,18 @@ pt getOffsetsFromWithRadius(int x, int y, pt sc, long double rScale) {
             long double arg2Sqr = rScaleSqr * sT * sT / r2Sqr;
             long double arg1Co = 1.0L - yC2 * yC2;
             long double axisTilt = asinl(yC2 * sqrtl(1.0L - arg2Sqr) - copysignl(sqrtl(arg2Sqr * arg1Co), sc.t));                   // == asinl(yC2) - asinl(rScale * sinl(sc.t) / r2Sqrt);
-            long double phiLeft;
             long double cAT = cosl(axisTilt);
             long double r2ScAT = r2Sqrt * cAT;
-            long double s = ((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L;
             long double ySpace = r2Sqrt * (yC2 * cAT - copysignl(sqrtl(arg1Co * (1.0L - cAT * cAT)), axisTilt));
             long double r3Sqr = rScaleSqr - ySpace * ySpace;
-            if (r3Sqr > 0.0L)
-            {
-                phiLeft = sc.p - s * acosl(-xC / sqrtl(r3Sqr));
-            }
-            else
-            {
-                phiLeft = sc.p - s * PIHalf;
-            }
-            phiLeft = fmodl(phiLeft + PIDouble, PIDouble);
             pt value;
-            value.p = phiLeft;
+            value.p = fmodl((sc.p - (((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L) * (r3Sqr > 0.0L ? acosl(-xC / sqrtl(r3Sqr)) : PIHalf)) + PIDouble, PIDouble);
             value.t = axisTilt;
             return value;
         }
         else {
-            long double phiLeft = sc.p;
-            if (xC > 0.0L)
-            {
-                phiLeft -= PI;
-            }
-            phiLeft = fmodl(phiLeft + PIDouble, PIDouble);
             pt value;
-            value.p = phiLeft;
+            value.p = fmodl(sc.p - (xC > 0.0L ? PI : 0.0L) + PIDouble, PIDouble);
             value.t = 0.0L;
             return value;
         }
@@ -210,28 +158,27 @@ pt getOffsetsFromWithRadius(int x, int y, pt sc, long double rScale) {
 }
 
 
+float zoomF;
 int zoom;
 long double stepSize;
 
 void determineZoom() {
     pt middleLeft = at(0, HEIGHT / 2);
-    int newZoom;
+    float newZoom;
     long double newStepSize;
     if (middleLeft.t == 2.0L) {
-        newZoom = ceill(log2l(rScale / rasterTileSize));        // == ceill(log2l(2 * rScale * 2 / rasterTileSize));
-        newZoom += 2;                                           // == above continued
+        newZoom = log2l(rScale / rasterTileSize);        // == log2l(2 * rScale * 2 / rasterTileSize);
+        newZoom += 2.0F;                                 // == above continued
         newStepSize = PIDouble / 48.0L;
     } else {
         long double deltaP = at(WIDTH - 1, HEIGHT / 2).p - middleLeft.p;
-        if (deltaP <= 0.0L) {
-            deltaP += PIDouble;
-        }
-        long double pixelPerPhi = WIDTH / deltaP;
-        newZoom = ceill(log2l(pixelPerPhi * PIDouble / rasterTileSize));
+        deltaP += (deltaP <= 0.0L ? PIDouble : 0.0L);
+        newZoom = log2l((WIDTH / deltaP) * PIDouble / rasterTileSize);
         newStepSize = deltaP / 16.0L;
     }
-    if (newZoom >= 0 && newZoom <= 30) {
-        zoom = newZoom;
+    if (newZoom >= 0.0F && newZoom <= 30.0F) {
+        zoomF = newZoom;
+        zoom = (int)ceilf(newZoom);
         stepSize = newStepSize;
     }
 }
@@ -266,35 +213,17 @@ ptD atD(int x, int y)
             double yC2 = yC / r2Sqrt;
             double cAT = cos(axisTiltD);
             double ySpace = r2Sqrt * (yC2 * cAT - copysign(sqrt((1.0 - yC2 * yC2) * (1.0 - cAT * cAT)), axisTiltD));                     // == r2Sqrt * sin(asin(yC / r2Sqrt) - axisTiltD);
-            double t = asin(ySpace / rScaleD);
-            double p;
             double r2ScAT = r2Sqrt * cAT;
-            double s = ((axisTiltD > 0.0 && -yC > r2ScAT) || (axisTiltD < 0.0 && yC > r2ScAT)) ? -1.0 : 1.0;
             double r3Sqr = rScaleSqrD - ySpace * ySpace;
-            if (r3Sqr > 0.0)
-            {
-                p = phiLeftD + s * acos(-xC / sqrt(r3Sqr));
-            }
-            else
-            {
-                p = phiLeftD + s * PIHalfD;
-            }
-            p = fmod(p + PIDoubleD, PIDoubleD);
             ptD value;
-            value.p = p;
-            value.t = t;
+            value.p = fmod(phiLeftD + (((axisTiltD > 0.0 && -yC > r2ScAT) || (axisTiltD < 0.0 && yC > r2ScAT)) ? -1.0 : 1.0) * (r3Sqr > 0.0 ? acos(-xC / sqrt(r3Sqr)) : PIHalfD) + PIDoubleD, PIDoubleD);
+            value.t = asin(ySpace / rScaleD);
             return value;
         }
         else
         {
-            double p = phiLeftD;
-            if (xC > 0.0)
-            {
-                p += PID;
-            }
-            p = fmod(p + PIDoubleD, PIDoubleD);
             ptD value;
-            value.p = p;
+            value.p = fmod(phiLeftD + (xC > 0.0 ? PID : 0.0) + PIDoubleD, PIDoubleD);
             value.t = 0.0;
             return value;
         }
@@ -335,35 +264,47 @@ ptF atF(int x, int y)
             float yC2 = yC / r2Sqrt;
             float cAT = cosf(axisTiltF);
             float ySpace = r2Sqrt * (yC2 * cAT - copysignf(sqrtf((1.0F - yC2 * yC2) * (1.0F - cAT * cAT)), axisTiltF));                     // == r2Sqrt * sinf(asinf(yC / r2Sqrt) - axisTiltF);
-            float t = asinf(ySpace / rScaleF);
-            float p;
             float r2ScAT = r2Sqrt * cAT;
-            float s = ((axisTiltF > 0.0F && -yC > r2ScAT) || (axisTiltF < 0.0F && yC > r2ScAT)) ? -1.0F : 1.0F;
             float r3Sqr = rScaleSqrF - ySpace * ySpace;
-            if (r3Sqr > 0.0F)
-            {
-                p = phiLeftF + s * acosf(-xC / sqrtf(r3Sqr));
-            }
-            else
-            {
-                p = phiLeftF + s * PIHalfF;
-            }
-            p = fmodf(p + PIDoubleF, PIDoubleF);
             ptF value;
-            value.p = p;
-            value.t = t;
+            value.p = fmodf(phiLeftF + (((axisTiltF > 0.0F && -yC > r2ScAT) || (axisTiltF < 0.0F && yC > r2ScAT)) ? -1.0F : 1.0F) * (r3Sqr > 0.0F ? acosf(-xC / sqrtf(r3Sqr)) : PIHalfF) + PIDoubleF, PIDoubleF);
+            value.t = asinf(ySpace / rScaleF);
             return value;
         }
         else
         {
-            float p = phiLeftF;
-            if (xC > 0.0F)
-            {
-                p += PIF;
-            }
-            p = fmodf(p + PIDoubleF, PIDoubleF);
             ptF value;
-            value.p = p;
+            value.p = fmodf(phiLeftF + (xC > 0.0F ? PIF : 0.0F) + PIDoubleF, PIDoubleF);
+            value.t = 0.0F;
+            return value;
+        }
+    }
+    ptF value;
+    value.p = 0.0F;
+    value.t = 2.0F;
+    return value;
+}
+
+ptF atFWithoutOffsets(int x, int y)
+{
+    int xC = x - centerX;
+    int yC = y - centerY;
+    float r2Sqr = rScaleSqrF - xC * xC;
+    float yC2 = yC * yC;
+    if (yC2 <= r2Sqr)
+    {
+        if (r2Sqr > 0.0F)
+        {
+            float r3Sqr = rScaleSqrF - yC2;
+            ptF value;
+            value.p = r3Sqr > 0.0F ? acosf(-xC / sqrtf(r3Sqr)) : PIHalfF;
+            value.t = asinf(yC / rScaleF);
+            return value;
+        }
+        else
+        {
+            ptF value;
+            value.p = xC > 0.0F ? PIF : 0.0F;
             value.t = 0.0F;
             return value;
         }
@@ -377,24 +318,22 @@ ptF atF(int x, int y)
 
 void determineZoomF() {
     ptF middleLeft = atF(0, HEIGHT / 2);
-    int newZoom;
+    float newZoom;
     float newStepSize;
     if (middleLeft.t == 2.0F) {
-        newZoom = ceilf(log2f(rScaleF / rasterTileSize));       // == ceilf(log2f(2 * rScaleF * 2 / rasterTileSize));
-        newZoom += 2;                                           // == above continued
+        newZoom = log2f(rScaleF / rasterTileSize);              // == log2f(2 * rScaleF * 2 / rasterTileSize);
+        newZoom += 2.0F;                                        // == above continued
         newStepSize = PIDoubleF / 48.0F;
     }
     else {
         float deltaP = atF(WIDTH - 1, HEIGHT / 2).p - middleLeft.p;
-        if (deltaP <= 0.0F) {
-            deltaP += PIDoubleF;
-        }
-        float pixelPerPhi = WIDTH / deltaP;
-        newZoom = ceilf(log2f(pixelPerPhi * PIDoubleF / rasterTileSize));
+        deltaP += (deltaP <= 0.0F ? PIDoubleF : 0.0F);
+        newZoom = log2f((WIDTH / deltaP) * PIDoubleF / rasterTileSize);
         newStepSize = deltaP / 16.0F;
     }
-    if (newZoom >= 0 && newZoom <= 30) {
-        zoom = newZoom;
+    if (newZoom >= 0.0F && newZoom <= 30.0F) {
+        zoomF = newZoom;
+        zoom = (int)ceilf(newZoom);
         stepSize = newStepSize;                                 // use non-float stepSize on purpose
     }
 }
@@ -716,6 +655,54 @@ void pickPixel(pixel* p, unsigned char* pixels) {
     memcpy((void*)(((unsigned char*)buffer) + (p->targetY * pitch + p->targetX * 3)), (void*)(pixels + (p->sourceY * rasterTileSize + p->sourceX) * 3), 3);
 }
 
+const double sx = 0.57735;
+const double sy = 0.57735;
+const double sz = -0.57735;
+const unsigned char w = 255;
+const unsigned int r = 0;
+const unsigned int g = 1;
+const unsigned int b = 2;
+
+/// <summary>
+/// lights a pixel from a predefined light ray
+/// </summary>
+/// <param name="x">x coordinate of the pixel in the window</param>
+/// <param name="y">y coordinate of the pixel in the window</param>
+/// <param name="rgb">array of 3 unsigned char containing the original color, gets overwritten to the lighted color</param>
+void lightPixel(int x, int y, unsigned char* rgb) {
+    ptF angles = atFWithoutOffsets(x, y);
+    double ct = cos(-angles.t);
+    double nx = ct * cos(angles.p + PI);
+    double ny = ct * sin(angles.p + PI);
+    double nz = sin(-angles.t);
+    double sn = 2.0 * (sx * nx + sy * ny + sz * nz);
+    double rx = sx - sn * nx;
+    double ry = sy - sn * ny;
+    double rz = sz - sn * nz;
+    double a = -ry / sqrt(rx * rx + ry * ry + rz * rz);
+    a = a < 0.0 ? 0.0 : a;
+    double f;
+    unsigned char m = max(rgb[r], max(rgb[g], rgb[b]));
+    if (m == rgb[r])
+        f = 0.275;
+    else
+        if (m == rgb[g])
+            f = 0.35;
+        else
+            f = 0.5;
+    double t = f * a * a * (1.0 - zoomF / 3.0);
+    rgb[r] += (unsigned char)((w - rgb[r]) * t);
+    rgb[g] += (unsigned char)((w - rgb[g]) * t);
+    rgb[b] += (unsigned char)((w - rgb[b]) * t);
+}
+
+void pickPixelWithLighting(pixel* p, unsigned char* pixels) {
+    unsigned char rgb[3];
+    memcpy((void*)rgb, (void*)(pixels + (p->sourceY * rasterTileSize + p->sourceX) * 3), 3);
+    lightPixel(p->targetX, p->targetY, rgb);
+    memcpy((void*)(((unsigned char*)buffer) + (p->targetY * pitch + p->targetX * 3)), (void*)rgb, 3);
+}
+
 typedef struct Link {
     pixel* p;
     struct Link* l;
@@ -728,6 +715,31 @@ void pickPixels(void* key, size_t ksize, uintptr_t value, void* usr) {
         link* l = (link*)value;
         do {
             pickPixel(l->p, pixels);
+            free(l->p);
+            link* currentLink = l;
+            l = l->l;
+            free(currentLink);
+        } while (l != NULL);
+    }
+    else {
+        link* l = (link*)value;
+        do {
+            free(l->p);
+            link* currentLink = l;
+            l = l->l;
+            free(currentLink);
+        } while (l != NULL);
+    }
+    free((char*)key);
+}
+
+void pickPixelsWithLighting(void* key, size_t ksize, uintptr_t value, void* usr) {
+    unsigned char* pixels;
+    hashmap_get(imgPresent, key, ksize, (uintptr_t*)&pixels);
+    if (pixels != NULL) {
+        link* l = (link*)value;
+        do {
+            pickPixelWithLighting(l->p, pixels);
             free(l->p);
             link* currentLink = l;
             l = l->l;
@@ -1477,10 +1489,266 @@ LIKE_LNULLF:
     return 0;
 }
 
+unsigned __stdcall rasterFWithLighting(void* data) {
+    threadData* tData = (threadData*)data;
+    int yStart = tData->yStart;
+    int yEnd = tData->yEnd;
+    hashmap* imgQueue = hashmap_create();
+    tData->rastering = 1;
+    rastered = 0;
+    notScheduled = 1;
+    for (int y = yStart; y < yEnd; ++y) {
+        for (int x = 0; x < WIDTH; ++x) {
+            ptF angles = atF(x, y);
+            if (angles.t != 2.0F) {
+                float amount = pow(2, zoom);
+                float xTile = angles.p * amount / PIDoubleF;
+                float yTile = (angles.t - -PIHalfF - .0001F) * amount / PIF;            // - .0001 = prevent exact 1 as result (values in image are [0,1), [ = including, ) = excluding )
+                int tileX = (int)xTile;                                                 // (int) floors towards 0
+                int tileY = (int)yTile;
+                char id[25];                                                            // maximum length of id incl. \0 at maximum zoom of 30
+                int length = sprintf_s(id, 25, idFormat, zoom, tileX, tileY);
+                if (length == 0) {
+                    length = 5;
+                    strcpy(id, "0/0/0");
+                    zoom = 0;
+                    xTile = angles.p / PIDoubleF;
+                    if (xTile < 0.0F) {
+                        xTile = 0.0F;
+                    }
+                    else if (xTile >= 1.0F) {
+                        xTile = .9999F;
+                    }
+                    yTile = (angles.t - -PIHalfF - .0001F) / PIF;
+                    if (yTile < 0.0F) {
+                        yTile = 0.0F;
+                    }
+                    else if (yTile >= 1.0F) {
+                        yTile = .9999F;
+                    }
+                    tileX = 0;
+                    tileY = 0;
+                }
+                int steps = 0;
+                int iXTile;
+                int iYTile;
+                uintptr_t result;
+                switch (dir) {
+                    case REFRESH:
+                    case ZIN:
+                    case ZOUT:
+                    case SIDE: {
+                        int z = zoom;
+                        float xTileI = xTile;
+                        float yTileI = yTile;
+                        int tileXI = tileX;
+                        int tileYI = tileY;
+                        char newId[25];
+                        char* key = id;
+                        int newLength = length;
+                        uintptr_t newResult;
+                        while (hashmap_get(imgPresent, (void*)key, newLength, &newResult) && newResult != (uintptr_t)NULL) {
+                            result = newResult;
+                            ++steps;
+                            iXTile = (int)((xTileI - tileXI) * rasterTileSize);
+                            iYTile = (int)((yTileI - tileYI) * rasterTileSize);
+                            break;                                                      // no break intended for ZIN, ZOUT, SIDE = get as detailed zoom as available uninterrupted from here but this costs too much framerate on Ryzen 5800X
+                            float amount = pow(2, ++z);
+                            xTileI = angles.p * amount / PIDoubleF;
+                            yTileI = (angles.t - -PIHalfF - .0001F) * amount / PIF;
+                            tileXI = (int)xTileI;
+                            tileYI = (int)yTileI;
+                            newLength = sprintf_s(newId, 25, idFormat, z, tileXI, tileYI);
+                            if (newLength == 0) {
+                                break;
+                            }
+                            key = newId;
+                        }
+                        break;
+                    }
+                    case INIT:
+                    default:
+                        break;
+                }
+                if (steps > 0)
+                {
+                    pixel p;
+                    p.sourceX = iXTile;
+                    p.sourceY = iYTile;
+                    p.targetX = x;
+                    p.targetY = y;
+                    pickPixelWithLighting(&p, (unsigned char*)result);
+                    continue;
+                }
+                else {
+                    int iXTile = (int)((xTile - tileX) * rasterTileSize);
+                    int iYTile = (int)((yTile - tileY) * rasterTileSize);
+
+                    int picked = 0;
+                    switch (dir) {
+                        case ZIN:
+                        case SIDE:
+                            if (zoom > 0) {
+                                float amount = pow(2, zoom - 1);
+                                float xTile = angles.p * amount / PIDoubleF;
+                                float yTile = (angles.t - -PIHalfF - .0001F) * amount / PIF;
+                                int tileX = (int)xTile;
+                                int tileY = (int)yTile;
+                                char id[25];
+                                int length = sprintf_s(id, 25, idFormat, zoom - 1, tileX, tileY);
+                                if (length == 0) {
+                                    length = 5;
+                                    strcpy(id, "0/0/0");
+                                    xTile = angles.p / PIDoubleF;
+                                    if (xTile < 0.0F) {
+                                        xTile = 0.0F;
+                                    }
+                                    else if (xTile >= 1.0F) {
+                                        xTile = .9999F;
+                                    }
+                                    yTile = (angles.t - -PIHalfF - .0001F) / PIF;
+                                    if (yTile < 0.0F) {
+                                        yTile = 0.0F;
+                                    }
+                                    else if (yTile >= 1.0F) {
+                                        yTile = .9999F;
+                                    }
+                                    tileX = 0;
+                                    tileY = 0;
+                                }
+                                uintptr_t result;
+                                if (hashmap_get(imgPresent, (void*)id, length, &result) && result != (uintptr_t)NULL) {
+                                    pixel p;
+                                    p.sourceX = (int)((xTile - tileX) * rasterTileSize);
+                                    p.sourceY = (int)((yTile - tileY) * rasterTileSize);
+                                    p.targetX = x;
+                                    p.targetY = y;
+                                    pickPixelWithLighting(&p, (unsigned char*)result);
+                                    picked = 1;
+                                }
+                            }
+                            break;
+                        case ZOUT:
+                        case INIT:
+                        case REFRESH:
+                        default:
+                            break;
+                    }
+                    if (!picked) {
+                        unsigned char rgb[3];
+                        memcpy((void*)rgb, (void*)zero3, 3);
+                        lightPixel(x, y, rgb);
+                        memcpy((void*)(((unsigned char*)buffer) + (y * pitch + x * 3)), (void*)rgb, 3);
+                    }
+
+                    if (imgQueue != NULL) {
+                        pixel* p = malloc(sizeof(pixel));
+                        uintptr_t result;
+                        if (hashmap_get(imgQueue, (void*)id, length, &result)) {
+                            if (p != NULL) {
+                                p->sourceX = iXTile;
+                                p->sourceY = iYTile;
+                                p->targetX = x;
+                                p->targetY = y;
+                                link* l = malloc(sizeof(link));
+                                if (l != NULL) {
+                                    l->p = p;
+                                    l->l = (link*)result;
+                                    hashmap_set(imgQueue, (void*)id, length, (uintptr_t)l);
+                                    continue;
+                                }
+                                else {
+                                    free(p);
+                                }
+                            }
+                        }
+                        else {
+                            if (p != NULL) {
+                                p->sourceX = iXTile;
+                                p->sourceY = iYTile;
+                                p->targetX = x;
+                                p->targetY = y;
+                                link* l = malloc(sizeof(link));
+                                if (l != NULL) {
+                                    l->p = p;
+                                    l->l = NULL;
+                                    char* pId = malloc(length);
+                                    if (pId != NULL) {
+                                        idData* lastRequest = NULL;
+                                        idData* request = &(tData->dId);
+                                        while (request->idLength != 0) {
+                                            if (request->next != NULL) {
+                                                request = request->next;
+                                            }
+                                            else {
+                                                idData* newRequest = malloc(sizeof(idData));
+                                                if (newRequest == NULL) {
+                                                    free(pId);
+                                                    goto LIKE_LNULLFWL;
+                                                }
+                                                newRequest->next = NULL;
+                                                lastRequest = request;
+                                                request = newRequest;
+                                                break;
+                                            }
+                                        }
+                                        memcpy(request->id, id, length + 1);
+                                        request->idLength = length;
+                                        if (lastRequest != NULL) {
+                                            lastRequest->next = request;
+                                        }
+                                        memcpy(pId, id, length);
+                                        hashmap_set(imgQueue, (void*)pId, length, (uintptr_t)l);
+                                        queued = 1;
+                                        tData->imageRequestRequested = 1;
+                                        continue;
+                                    }
+                                    else {
+LIKE_LNULLFWL:
+                                        free(l);
+                                        free(p);
+                                    }
+                                }
+                                else {
+                                    free(p);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            else {
+                memcpy((void*)(((unsigned char*)buffer) + (y * pitch + x * 3)), (void*)zero3, 3);
+            }
+        }
+    }
+    //memcpy(((unsigned char*)region) + yStart * pitch, ((unsigned char*)buffer) + yStart * pitch, pitch * (yEnd - yStart));                            // copy all once in main thread appears to be faster than copy parts parallely from threads
+    if (tData->lastQueue != NULL) {
+        hashmap_iterate(tData->lastQueue, clearQueue, NULL);
+        hashmap_free(tData->lastQueue);
+    }
+    tData->lastQueue = imgQueue;
+    tData->rastering = 0;
+    return 0;
+}
+
 unsigned __stdcall rasterCompletion(void* data) {
     threadData* tData = (threadData*)data;
     if (tData->lastQueue != NULL) {
         hashmap_iterate(tData->lastQueue, pickPixels, NULL);
+        hashmap_free(tData->lastQueue);
+        //int yStart = tData->yStart;
+        //int yEnd = tData->yEnd;
+        //memcpy(((unsigned char*)region) + yStart * pitch, ((unsigned char*)buffer) + yStart * pitch, pitch * (yEnd - yStart));                        // copy all once in main thread appears to be faster than copy parts parallely from threads
+        tData->lastQueue = NULL;
+    }
+    return 0;
+}
+
+unsigned __stdcall rasterCompletionWithLighting(void* data) {
+    threadData* tData = (threadData*)data;
+    if (tData->lastQueue != NULL) {
+        hashmap_iterate(tData->lastQueue, pickPixelsWithLighting, NULL);
         hashmap_free(tData->lastQueue);
         //int yStart = tData->yStart;
         //int yEnd = tData->yEnd;
@@ -1872,7 +2140,7 @@ MEMORY_DONE:
     for (int i = 0; i < maxThreads; ++i) {
         threadsData[i].yStart = (i * HEIGHT) / maxThreads;
         threadsData[i].yEnd = ((i + 1) * HEIGHT) / maxThreads;
-        threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
+        threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < 4 ? rasterFWithLighting : zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
         if (threadsData[i].hThread == 0) {
             notquitrequested = 0;
         }
@@ -2130,7 +2398,7 @@ MEMORY_DONE:
                 for (int i = 0; i < maxThreads; ++i) {
                     WaitForSingleObject(threadsData[i].hThread, INFINITE);
                     CloseHandle(threadsData[i].hThread);
-                    threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
+                    threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < 4 ? rasterFWithLighting : zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
                     if (threadsData[i].hThread == 0) {
                         notquitrequested = 0;
                         goto AFTER_LOOP;
@@ -2181,7 +2449,7 @@ MEMORY_DONE:
                             WaitForSingleObject(threadsData[i].hComplete, INFINITE);
                             CloseHandle(threadsData[i].hComplete);
                         }
-                        threadsData[i].hComplete = (HANDLE)_beginthreadex(NULL, 0, rasterCompletion, (void*)&(threadsData[i]), 0, NULL);
+                        threadsData[i].hComplete = (HANDLE)_beginthreadex(NULL, 0, zoom < 4 ? rasterCompletionWithLighting : rasterCompletion, (void*)&(threadsData[i]), 0, NULL);
                     }
                 }
                 else {
@@ -2265,7 +2533,7 @@ MEMORY_DONE:
                     for (int i = 0; i < maxThreads; ++i) {
                         threadsData[i].yStart = (i * HEIGHT) / maxThreads;
                         threadsData[i].yEnd = ((i + 1) * HEIGHT) / maxThreads;
-                        threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
+                        threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < 4 ? rasterFWithLighting : zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
                         if (threadsData[i].hThread == 0) {
                             notquitrequested = 0;
                             maxThreads = i;
