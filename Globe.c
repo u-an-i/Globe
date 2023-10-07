@@ -4,7 +4,7 @@
 #include <SDL_main.h>                   // only include this one in the source file with main()!
 #include <stdio.h>
 #include <mathimf.h>
-#include <map.h>
+#include <c-hashmap.h>
 #include <stdlib.h>
 #include <windows.h>
 #include <winhttp.h>
