@@ -667,6 +667,8 @@ const unsigned int r = 0;
 const unsigned int g = 1;
 const unsigned int b = 2;
 
+const int maxZoomLighting = 4;
+
 /// <summary>
 /// lights a pixel from a predefined light ray
 /// </summary>
@@ -694,7 +696,7 @@ void lightPixel(int x, int y, unsigned char* rgb) {
             f = 0.35;
         else
             f = 0.5;
-    double t = f * a * a * (1.0 - zoomF / 3.0);
+    double t = f * a * a * (1.0 - zoomF / (maxZoomLighting - 1));
     rgb[r] += (unsigned char)((w - rgb[r]) * t);
     rgb[g] += (unsigned char)((w - rgb[g]) * t);
     rgb[b] += (unsigned char)((w - rgb[b]) * t);
@@ -2096,7 +2098,7 @@ FORMAT_END: ;
                         elevationData = malloc(4665600);
                         if (elevationData != NULL) {
                             lzo_uint decompressedSize = 4665600;
-                            if (lzo1x_decompress(compressedElevationData, 1374352, elevationData, &decompressedSize, NULL) == LZO_E_OK && decompressedSize == 4665600) {
+                            if (lzo1x_decompress_safe(compressedElevationData, 1374352, elevationData, &decompressedSize, NULL) == LZO_E_OK && decompressedSize == 4665600) {
                                 free(compressedElevationData);
                                 elevationDataAvailable = 1;
                                 goto ELEVATION_DONE;
@@ -2185,7 +2187,7 @@ MEMORY_DONE:
     for (int i = 0; i < maxThreads; ++i) {
         threadsData[i].yStart = (i * HEIGHT) / maxThreads;
         threadsData[i].yEnd = ((i + 1) * HEIGHT) / maxThreads;
-        threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < 4 ? rasterFWithLighting : zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
+        threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < maxZoomLighting ? rasterFWithLighting : zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
         if (threadsData[i].hThread == 0) {
             notquitrequested = 0;
         }
@@ -2443,7 +2445,7 @@ MEMORY_DONE:
                 for (int i = 0; i < maxThreads; ++i) {
                     WaitForSingleObject(threadsData[i].hThread, INFINITE);
                     CloseHandle(threadsData[i].hThread);
-                    threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < 4 ? rasterFWithLighting : zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
+                    threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < maxZoomLighting ? rasterFWithLighting : zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
                     if (threadsData[i].hThread == 0) {
                         notquitrequested = 0;
                         goto AFTER_LOOP;
@@ -2494,7 +2496,7 @@ MEMORY_DONE:
                             WaitForSingleObject(threadsData[i].hComplete, INFINITE);
                             CloseHandle(threadsData[i].hComplete);
                         }
-                        threadsData[i].hComplete = (HANDLE)_beginthreadex(NULL, 0, zoom < 4 ? rasterCompletionWithLighting : rasterCompletion, (void*)&(threadsData[i]), 0, NULL);
+                        threadsData[i].hComplete = (HANDLE)_beginthreadex(NULL, 0, zoom < maxZoomLighting ? rasterCompletionWithLighting : rasterCompletion, (void*)&(threadsData[i]), 0, NULL);
                     }
                 }
                 else {
@@ -2578,7 +2580,7 @@ MEMORY_DONE:
                     for (int i = 0; i < maxThreads; ++i) {
                         threadsData[i].yStart = (i * HEIGHT) / maxThreads;
                         threadsData[i].yEnd = ((i + 1) * HEIGHT) / maxThreads;
-                        threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < 4 ? rasterFWithLighting : zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
+                        threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < maxZoomLighting ? rasterFWithLighting : zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
                         if (threadsData[i].hThread == 0) {
                             notquitrequested = 0;
                             maxThreads = i;
