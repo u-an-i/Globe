@@ -1,8 +1,8 @@
 # Globe
- raster tiles maps on sphere renderer  
+raster tiles maps on sphere renderer  
   
 # libraries utilised
-SDL, libjpeg-turbo, c-hashmap  
+SDL, libjpeg-turbo, c-hashmap, miniLZO  
   
 - https://github.com/libsdl-org/SDL/tree/SDL2  
   (clone and follow docs/README-...)
@@ -14,14 +14,22 @@ SDL, libjpeg-turbo, c-hashmap
   with https://github.com/Mashpoe/c-hashmap/pull/6  
   (copy files to this project)  
   (compiled as DLL in distributables,  
-  DLL header named "c-hashmap.h")
+  DLL source header named "c-hashmap.h")
+- http://www.oberhumer.com/opensource/lzo/  
+  in form of miniLZO  
+  (copy files to this project)  
+  (compiled as DLL in distributables,  
+  DLL source header named "miniLZO.h")
   
 (versions as of writing these lines)  
   
 # Windows application
-distributables compiled in  
-Visual Studio 2022 17.7.4 with Intel C++ Compiler 2023.2.1  
+distributables built  
+  in  
+Visual Studio 2022 17.7.4  
+  with  
+Intel C++ Compiler 2023.2.1  
   
 see  
 https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-10/use-the-intel-c-compiler-classic-math-library.html  
-for compiler options regarding long double usage
+for compiler options regarding long double utilisation
