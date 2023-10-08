@@ -3,12 +3,13 @@
 #include <SDL.h>
 #include <SDL_main.h>                   // only include this one in the source file with main()!
 #include <stdio.h>
+#include <windows.h>
 #include <mathimf.h>
 #include <c-hashmap.h>
 #include <stdlib.h>
-#include <windows.h>
 #include <winhttp.h>
 #include <turbojpeg.h>
+#include <miniLZO.h>
 
 #pragma warning( disable : 4996 4244 )  // "safe" print functions, int-float-double conversion
 
@@ -645,6 +646,9 @@ movementDirection dir;
 void* buffer;
 void* region;
 int pitch;
+
+unsigned char* elevationData;
+int elevationDataAvailable = 0;
 
 typedef struct Pixel {
     int sourceX, sourceY;
@@ -1853,7 +1857,7 @@ int main(int argc, char* argv[])
                         if (SDL_LockTexture(texture, NULL, &region, &pitch) == 0) {
                             buffer = malloc(pitch * HEIGHT);
                             if (buffer != NULL) {
-                                icon = SDL_LoadBMP("globe.bmp");
+                                icon = SDL_LoadBMP("assets/appicon.bmp");
                                 if (icon != NULL) {
                                     SDL_SetColorKey(icon, SDL_TRUE, SDL_MapRGB(icon->format, 0, 0, 0));
                                     SDL_SetWindowIcon(window, icon);
@@ -2079,6 +2083,45 @@ FORMAT_END: ;
         }
     } while (++count2 < NUM_ERRORS);
 
+
+    FILE* compressedElevationDataFile = fopen("data/elevation.lzo", "rb");
+    if (compressedElevationDataFile != NULL) {
+        unsigned char* compressedElevationData = malloc(1374352);
+        if (compressedElevationData != NULL) {
+            if (fread(compressedElevationData, 1, 1374352, compressedElevationDataFile) == 1374352) {
+                fgetc(compressedElevationDataFile);
+                if (feof(compressedElevationDataFile)) {
+                    fclose(compressedElevationDataFile);
+                    if (lzo_init() == LZO_E_OK) {
+                        elevationData = malloc(4665600);
+                        if (elevationData != NULL) {
+                            lzo_uint decompressedSize = 4665600;
+                            if (lzo1x_decompress(compressedElevationData, 1374352, elevationData, &decompressedSize, NULL) == LZO_E_OK && decompressedSize == 4665600) {
+                                free(compressedElevationData);
+                                elevationDataAvailable = 1;
+                                goto ELEVATION_DONE;
+                            }
+                            free(elevationData);
+                        }
+                    }
+                }
+                else {
+                    fclose(compressedElevationDataFile);
+                }
+            }
+            else {
+                fclose(compressedElevationDataFile);
+            }
+            free(compressedElevationData);
+        }
+        else {
+            fclose(compressedElevationDataFile);
+        }
+    }
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "elevation data not usable", "presenting without elevation", window);
+
+
+ELEVATION_DONE:
     int cores = SDL_GetCPUCount() - 2;
     if (cores < 1)
     {
@@ -2105,6 +2148,8 @@ FORMAT_END: ;
         free(threadsData);
     }
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "the following error occurred:", "failed allocating required memory", window);
+    if (elevationDataAvailable)
+        free(elevationData);
     free(path);
     free(host);
     free(urlFormat);
@@ -2564,6 +2609,9 @@ MEMORY_DONE:
 AFTER_LOOP:
     if(nonRequestedExit)
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "an error occurred:", "likely one of\n\n\t'failed allocating required memory',\n\t'failed starting thread'\n\n.", window);
+
+    if (elevationDataAvailable)
+        free(elevationData);
 
     if (hCollector != 0) {
         doCollecting = 0;
