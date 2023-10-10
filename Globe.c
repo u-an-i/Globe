@@ -317,6 +317,7 @@ ptF atFWithoutOffsets(int x, int y)
 }
 
 
+// apparently at zoomLevel around before 30, float cannot store the values involved correctly anymore
 void determineZoomF() {
     ptF middleLeft = atF(0, HEIGHT / 2);
     float newZoom;
@@ -546,7 +547,7 @@ unsigned __stdcall collector(void* data) {
                                             aId->buffer = NULL;
                                             aId->bytesRead = 0;
                                             LOG(("%s\n", id));
-                                            if (hashmap_sets_left_before_resize(imgPresent) <= 1) {
+                                            if (hashmap_sets_left_before_resize(imgPresent) <= 2) {         // <= 1 should suffice but crash was observed in hashmap_get(imgPresent, ...)
                                                 dontWaitForCollector = 0;
                                                 int countRastering;
                                                 do {
@@ -1951,21 +1952,6 @@ int main(int argc, char* argv[])
 
 
 SDL_STARTED:
-    centerX = WIDTH / 2;
-    centerY = HEIGHT / 2;
-    if (WIDTH < HEIGHT) {
-        rScale = WIDTH / 4;
-    }
-    else {
-        rScale = HEIGHT / 4;
-    }
-    rScaleSqr = rScale * rScale;
-    rScaleSqrF = rScaleSqr;
-    rScaleF = rScale;
-
-    determineZoomF();
-
-
     const char* errors[] = {
         "error reading url file, using default url",                            // 1
         "failed allocating memory for url, using default url",                  // 2
@@ -2239,6 +2225,20 @@ MEMORY_DONE:
 
     notquitrequested = 1;
 
+    centerX = WIDTH / 2;
+    centerY = HEIGHT / 2;
+    if (WIDTH < HEIGHT) {
+        rScale = WIDTH / 4;
+    }
+    else {
+        rScale = HEIGHT / 4;
+    }
+    rScaleSqr = rScale * rScale;
+    rScaleSqrF = rScaleSqr;
+    rScaleF = rScale;
+
+    determineZoom();
+
     dir = INIT;
 
     for (int i = 0; i < cores; ++i) {
@@ -2505,7 +2505,7 @@ MEMORY_DONE:
                     rScaleF = rScale;
                     rScaleSqrD = rScaleSqr;
                     rScaleD = rScale;
-                    determineZoomF();
+                    determineZoom();
                 }
                 queued = 0;
                 for (int i = 0; i < maxThreads; ++i) {
@@ -2637,7 +2637,7 @@ MEMORY_DONE:
                     phiLeftF = phiLeft;
                     axisTiltD = axisTilt;
                     phiLeftD = phiLeft;
-                    determineZoomF();
+                    determineZoom();
                     queued = 0;
                     for (int i = 0; i < maxThreads; ++i) {
                         WaitForSingleObject(threadsData[i].hThread, INFINITE);
