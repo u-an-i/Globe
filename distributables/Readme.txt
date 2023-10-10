@@ -34,6 +34,10 @@ including 30
 the application not informs about failed retrieval of map tiles, e.g. when
 the key is invalid nothing gets rastered, and the window remains black
 
+elevation is presented for outer zoom levels and is exaggerated by a factor
+of 20. Elevation is known to appear wrong for the poles and the Himalayan
+region.
+
 if the application does not start, you might need the Visual Studio 2022
 X64 Visual C(++) Redistributable you can find at
 https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist

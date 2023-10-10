@@ -67,7 +67,7 @@ pt at(int x, int y)
             long double r2ScAT = r2Sqrt * cAT;
             long double r3Sqr = rScaleSqr - ySpace * ySpace;
             pt value;
-            value.p = fmodl(phiLeft + (((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L) * (r3Sqr > 0.0L ? acosl(-xC / sqrtl(r3Sqr)) : PIHalf) + PIDouble, PIDouble);
+            value.p = fmodl(phiLeft + (((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L) * (r3Sqr > 0.0L ? sqrtl(r3Sqr) > abs(xC) ? acosl(-xC / sqrtl(r3Sqr)) : (PIHalf + copysignl(PIHalf, xC)) : PIHalf) + PIDouble, PIDouble);
             value.t = asinl(ySpace / rScale);
             return value;
         }
@@ -104,7 +104,7 @@ pt getOffsetsFrom(int x, int y, pt sc) {
             long double ySpace = r2Sqrt * (yC2 * cAT - copysignl(sqrtl(arg1Co * (1.0L - cAT * cAT)), axisTilt));
             long double r3Sqr = rScaleSqr - ySpace * ySpace;
             pt value;
-            value.p = fmodl((sc.p - (((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L) * (r3Sqr > 0.0L ? acosl(-xC / sqrtl(r3Sqr)) : PIHalf)) + PIDouble, PIDouble);
+            value.p = fmodl((sc.p - (((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L) * (r3Sqr > 0.0L ? sqrtl(r3Sqr) > abs(xC) ? acosl(-xC / sqrtl(r3Sqr)) : (PIHalf + copysignl(PIHalf, xC)) : PIHalf)) + PIDouble, PIDouble);
             value.t = axisTilt;
             return value;
         } 
@@ -141,7 +141,7 @@ pt getOffsetsFromWithRadius(int x, int y, pt sc, long double rScale) {
             long double ySpace = r2Sqrt * (yC2 * cAT - copysignl(sqrtl(arg1Co * (1.0L - cAT * cAT)), axisTilt));
             long double r3Sqr = rScaleSqr - ySpace * ySpace;
             pt value;
-            value.p = fmodl((sc.p - (((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L) * (r3Sqr > 0.0L ? acosl(-xC / sqrtl(r3Sqr)) : PIHalf)) + PIDouble, PIDouble);
+            value.p = fmodl((sc.p - (((axisTilt > 0.0L && -yC > r2ScAT) || (axisTilt < 0.0L && yC > r2ScAT)) ? -1.0L : 1.0L) * (r3Sqr > 0.0L ? sqrtl(r3Sqr) > abs(xC) ? acosl(-xC / sqrtl(r3Sqr)) : (PIHalf + copysignl(PIHalf, xC)) : PIHalf)) + PIDouble, PIDouble);
             value.t = axisTilt;
             return value;
         }
@@ -217,7 +217,7 @@ ptD atD(int x, int y)
             double r2ScAT = r2Sqrt * cAT;
             double r3Sqr = rScaleSqrD - ySpace * ySpace;
             ptD value;
-            value.p = fmod(phiLeftD + (((axisTiltD > 0.0 && -yC > r2ScAT) || (axisTiltD < 0.0 && yC > r2ScAT)) ? -1.0 : 1.0) * (r3Sqr > 0.0 ? acos(-xC / sqrt(r3Sqr)) : PIHalfD) + PIDoubleD, PIDoubleD);
+            value.p = fmod(phiLeftD + (((axisTiltD > 0.0 && -yC > r2ScAT) || (axisTiltD < 0.0 && yC > r2ScAT)) ? -1.0 : 1.0) * (r3Sqr > 0.0 ? sqrt(r3Sqr) > abs(xC) ? acos(-xC / sqrt(r3Sqr)) : (PIHalfD + copysign(PIHalfD, xC)) : PIHalfD) + PIDoubleD, PIDoubleD);
             value.t = asin(ySpace / rScaleD);
             return value;
         }
@@ -268,7 +268,7 @@ ptF atF(int x, int y)
             float r2ScAT = r2Sqrt * cAT;
             float r3Sqr = rScaleSqrF - ySpace * ySpace;
             ptF value;
-            value.p = fmodf(phiLeftF + (((axisTiltF > 0.0F && -yC > r2ScAT) || (axisTiltF < 0.0F && yC > r2ScAT)) ? -1.0F : 1.0F) * (r3Sqr > 0.0F ? acosf(-xC / sqrtf(r3Sqr)) : PIHalfF) + PIDoubleF, PIDoubleF);
+            value.p = fmodf(phiLeftF + (((axisTiltF > 0.0F && -yC > r2ScAT) || (axisTiltF < 0.0F && yC > r2ScAT)) ? -1.0F : 1.0F) * (r3Sqr > 0.0F ? sqrtf(r3Sqr) > abs(xC) ? acosf(-xC / sqrtf(r3Sqr)) : (PIHalfF + copysignf(PIHalfF, xC)) : PIHalfF) + PIDoubleF, PIDoubleF);
             value.t = asinf(ySpace / rScaleF);
             return value;
         }
@@ -298,7 +298,7 @@ ptF atFWithoutOffsets(int x, int y)
         {
             float r3Sqr = rScaleSqrF - yC2;
             ptF value;
-            value.p = r3Sqr > 0.0F ? acosf(-xC / sqrtf(r3Sqr)) : PIHalfF;
+            value.p = r3Sqr > 0.0F ? sqrtf(r3Sqr) > abs(xC) ? acosf(-xC / sqrtf(r3Sqr)) : (PIHalfF + copysignf(PIHalfF, xC)) : PIHalfF;
             value.t = asinf(yC / rScaleF);
             return value;
         }
@@ -667,7 +667,7 @@ const unsigned int r = 0;
 const unsigned int g = 1;
 const unsigned int b = 2;
 
-const int maxZoomLighting = 4;
+const int maxZoomLighting = 3;
 
 /// <summary>
 /// lights a pixel from a predefined light ray
@@ -677,7 +677,7 @@ const int maxZoomLighting = 4;
 /// <param name="rgb">array of 3 unsigned char containing the original color, gets overwritten to the lighted color</param>
 void lightPixel(int x, int y, unsigned char* rgb) {
     ptF angles = atFWithoutOffsets(x, y);
-    double ct = cos(-angles.t);
+    double ct = cos(-angles.t);                             // doubles to alleviate banding, does not avail
     double nx = ct * cos(angles.p + PI);
     double ny = ct * sin(angles.p + PI);
     double nz = sin(-angles.t);
@@ -797,7 +797,6 @@ unsigned __stdcall raster(void* data) {
                 if (length == 0) {
                     length = 5;
                     strcpy(id, "0/0/0");
-                    zoom = 0;
                     xTile = angles.p / PIDouble;
                     if (xTile < 0.0L) {
                         xTile = 0.0L;
@@ -1037,7 +1036,6 @@ unsigned __stdcall rasterD(void* data) {
                 if (length == 0) {
                     length = 5;
                     strcpy(id, "0/0/0");
-                    zoom = 0;
                     xTile = angles.p / PIDoubleD;
                     if (xTile < 0.0) {
                         xTile = 0.0;
@@ -1277,7 +1275,6 @@ unsigned __stdcall rasterF(void* data) {
                 if (length == 0) {
                     length = 5;
                     strcpy(id, "0/0/0");
-                    zoom = 0;
                     xTile = angles.p / PIDoubleF;
                     if (xTile < 0.0F) {
                         xTile = 0.0F;
@@ -1517,7 +1514,6 @@ unsigned __stdcall rasterFWithLighting(void* data) {
                 if (length == 0) {
                     length = 5;
                     strcpy(id, "0/0/0");
-                    zoom = 0;
                     xTile = angles.p / PIDoubleF;
                     if (xTile < 0.0F) {
                         xTile = 0.0F;
@@ -1749,6 +1745,76 @@ unsigned __stdcall rasterCompletion(void* data) {
         tData->lastQueue = NULL;
     }
     return 0;
+}
+
+const float maxRElevate = 0.1F;
+const float elevationExaggeration = 20.0F;
+
+void copyPixel(int sourceX, int sourceY, int destX, int destY) {
+    memcpy((void*)(((unsigned char*)buffer) + (destY * pitch + destX * 3)), (void*)(((unsigned char*)buffer) + (sourceY * pitch + sourceX * 3)), 3);
+}
+
+void putElevation(int x, int y, int r) {
+    ptF gAngles = atF(x, y);
+    if (gAngles.t != 2.0F) {
+        int16_t h = *((int16_t*)(elevationData + (((int)((gAngles.t - -PIHalfF - .0001F) / PIF * 1080)) * 2160 + (int)(gAngles.p / PIDoubleF * 2160)) * 2));
+        ptF sAngles = atFWithoutOffsets(x, y);              // when gAngles on globe, so are sAngles expected to be on globe
+        //float a = 1.0F / (1.0F - maxRElevate);
+        //float f = a * r / roundf(rScaleF) - maxRElevate * a;
+        float RNew = rScaleF * (1.0F + /*(pow(2, maxZoomLighting - 1 - zoom) - 1) * f **/ elevationExaggeration * h / 6378000.0F);
+        int nX = centerX + roundf(RNew * cosf(sAngles.t) * cosf(sAngles.p + PIF));
+        int nY = centerY + roundf(RNew * sinf(sAngles.t));
+        int dirX = (nX - x) > 0 ? 1 : -1;
+        int dirY = (nY - y) > 0 ? 1 : -1;
+        if (nX != x) {
+            float m = ((float)nY - y) / (nX - x);
+            int lastY = y;
+            for (int pX = x + dirX; pX != nX + dirX && pX != centerX + dirX * WIDTH / 2; pX += dirX) {
+                int pY = roundf(y + m * (pX - x));
+                if (pY >= 0 && pY < HEIGHT) {
+                    copyPixel(x, y, pX, pY);
+                    int a = (pY - lastY) / 2;
+                    for (int c = dirY; c != a + dirY; c += dirY) {
+                        copyPixel(x, y, pX - dirX, lastY + c);
+                        copyPixel(x, y, pX, pY - c);
+                    }
+                    lastY = pY;
+                }
+            }
+        }
+        else {
+            for (int pY = y + dirY; pY != nY + dirY && pY != centerY + dirY * HEIGHT / 2; pY += dirY) {
+                copyPixel(x, y, x, pY);
+            }
+        }
+    }
+}
+
+void elevate() {
+    int R = roundf(rScaleF);
+    int maxR = roundf(maxRElevate * R);
+    for (int r = R; r > maxR; --r) {
+        putElevation(centerX - r, centerY, r);
+        int lastY = 0;
+        for (int x = -r + 1; x <= r; ++x) {
+            int y = roundf(sqrtf(r * r - x * x));
+            int sX = centerX + x;
+            int sYp = centerY + y;
+            int sYm = centerY - y;
+            if (sX >= 0 && sX < WIDTH && sYm >= 0 && sYp < HEIGHT) {
+                putElevation(sX, sYp, r);
+                putElevation(sX, sYm, r);
+                int a = (y - lastY) / 2;                                    // integers! is equal to ceil((y - lastY - 1) / 2)
+                for (int c = 1; c <= a; ++c) {
+                    putElevation(sX - 1, centerY + lastY + c, r);
+                    putElevation(sX - 1, centerY - lastY - c, r);
+                    putElevation(sX, sYp - c, r);
+                    putElevation(sX, sYm + c, r);
+                }
+            }
+            lastY = y;
+        }
+    }
 }
 
 unsigned __stdcall rasterCompletionWithLighting(void* data) {
@@ -2088,9 +2154,9 @@ FORMAT_END: ;
 
     FILE* compressedElevationDataFile = fopen("data/elevation.lzo", "rb");
     if (compressedElevationDataFile != NULL) {
-        unsigned char* compressedElevationData = malloc(1374352);
+        unsigned char* compressedElevationData = malloc(1543766);
         if (compressedElevationData != NULL) {
-            if (fread(compressedElevationData, 1, 1374352, compressedElevationDataFile) == 1374352) {
+            if (fread(compressedElevationData, 1, 1543766, compressedElevationDataFile) == 1543766) {
                 fgetc(compressedElevationDataFile);
                 if (feof(compressedElevationDataFile)) {
                     fclose(compressedElevationDataFile);
@@ -2098,7 +2164,7 @@ FORMAT_END: ;
                         elevationData = malloc(4665600);
                         if (elevationData != NULL) {
                             lzo_uint decompressedSize = 4665600;
-                            if (lzo1x_decompress_safe(compressedElevationData, 1374352, elevationData, &decompressedSize, NULL) == LZO_E_OK && decompressedSize == 4665600) {
+                            if (lzo1x_decompress_safe(compressedElevationData, 1543766, elevationData, &decompressedSize, NULL) == LZO_E_OK && decompressedSize == 4665600) {
                                 free(compressedElevationData);
                                 elevationDataAvailable = 1;
                                 goto ELEVATION_DONE;
@@ -2474,6 +2540,9 @@ MEMORY_DONE:
                 countRastering += threadsData[i].rastering;
             }
             if (countRastering == 0) {
+                if (zoom < maxZoomLighting && elevationDataAvailable) {
+                    elevate();
+                }
                 memcpy(region, buffer, pitch * HEIGHT);                             // copy all once in main thread appears to be faster than copy parts parallely from threads
                 SDL_UnlockTexture(texture);
                 SDL_RenderCopy(renderer, texture, NULL, NULL);
@@ -2512,6 +2581,9 @@ MEMORY_DONE:
                 }
             }
             if (countEmpties == 0) {
+                if (zoom < maxZoomLighting && elevationDataAvailable) {
+                    elevate();
+                }
                 memcpy(region, buffer, pitch * HEIGHT);                             // copy all once in main thread appears to be faster than copy parts parallely from threads
                 SDL_UnlockTexture(texture);
                 SDL_RenderCopy(renderer, texture, NULL, NULL);
