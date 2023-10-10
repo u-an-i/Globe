@@ -1,5 +1,5 @@
 # Globe
-raster tiles maps on sphere renderer  
+ray casting renderer orthogonally projecting a sphere textured in a raster tiles map  
   
 # libraries utilised
 SDL, libjpeg-turbo, c-hashmap, miniLZO  
