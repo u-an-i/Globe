@@ -18,7 +18,8 @@ a raster tiles map of any service is supported as texture when
 - service url is below or equal 4096 bytes in size
 - service map tile identified by 0/0/0 spans longitudes
   from -180° at the left to +180° at the right and latitudes
-  from +90° at the top to -90° at the bottom
+  from around +85° at the top to around -85° at the bottom
+- service's map is web-mercator-projected
 
 put service url in file mapservice-url.txt on first line,
 do not include protocol and ://, so no https://,
@@ -39,8 +40,11 @@ the application not informs about failed retrieval of map tiles, e.g. when
 the key is invalid; then nothing gets rendered and the window remains black
 
 
+around the poles the data of the closest latitude having data available is
+stretched to them
+
 elevation is presented for outer zoom levels and is exaggerated by a factor
-of 20, it is known to appear wrong for the poles and the Himalayan region
+of 20
 
 
 if the application does not start, you might need the Visual Studio 2022

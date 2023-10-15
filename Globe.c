@@ -74,7 +74,7 @@ pt at(int x, int y)
         else
         {
             pt value;
-            value.p = fmodl(phiLeft + (xC > 0.0L ? PI : 0.0L) + PIDouble, PIDouble);
+            value.p = fmodl(phiLeft + (xC > 0 ? PI : 0.0L) + PIDouble, PIDouble);
             value.t = 0.0L;
             return value;
         }
@@ -110,7 +110,7 @@ pt getOffsetsFrom(int x, int y, pt sc) {
         } 
         else {
             pt value;
-            value.p = fmodl(sc.p - (xC > 0.0L ? PI : 0.0L) + PIDouble, PIDouble);
+            value.p = fmodl(sc.p - (xC > 0 ? PI : 0.0L) + PIDouble, PIDouble);
             value.t = 0.0L;
             return value;
         }
@@ -147,7 +147,7 @@ pt getOffsetsFromWithRadius(int x, int y, pt sc, long double rScale) {
         }
         else {
             pt value;
-            value.p = fmodl(sc.p - (xC > 0.0L ? PI : 0.0L) + PIDouble, PIDouble);
+            value.p = fmodl(sc.p - (xC > 0 ? PI : 0.0L) + PIDouble, PIDouble);
             value.t = 0.0L;
             return value;
         }
@@ -224,7 +224,7 @@ ptD atD(int x, int y)
         else
         {
             ptD value;
-            value.p = fmod(phiLeftD + (xC > 0.0 ? PID : 0.0) + PIDoubleD, PIDoubleD);
+            value.p = fmod(phiLeftD + (xC > 0 ? PID : 0.0) + PIDoubleD, PIDoubleD);
             value.t = 0.0;
             return value;
         }
@@ -275,7 +275,7 @@ ptF atF(int x, int y)
         else
         {
             ptF value;
-            value.p = fmodf(phiLeftF + (xC > 0.0F ? PIF : 0.0F) + PIDoubleF, PIDoubleF);
+            value.p = fmodf(phiLeftF + (xC > 0 ? PIF : 0.0F) + PIDoubleF, PIDoubleF);
             value.t = 0.0F;
             return value;
         }
@@ -286,10 +286,10 @@ ptF atF(int x, int y)
     return value;
 }
 
-ptF atFWithoutOffsets(int x, int y)
+ptF atFWithoutOffsets(float x, float y)
 {
-    int xC = x - centerX;
-    int yC = y - centerY;
+    float xC = x - centerX;
+    float yC = y - centerY;
     float r2Sqr = rScaleSqrF - xC * xC;
     float yC2 = yC * yC;
     if (yC2 <= r2Sqr)
@@ -298,7 +298,7 @@ ptF atFWithoutOffsets(int x, int y)
         {
             float r3Sqr = rScaleSqrF - yC2;
             ptF value;
-            value.p = r3Sqr > 0.0F ? sqrtf(r3Sqr) > abs(xC) ? acosf(-xC / sqrtf(r3Sqr)) : (PIHalfF + copysignf(PIHalfF, xC)) : PIHalfF;
+            value.p = r3Sqr > 0.0F ? sqrtf(r3Sqr) > fabsf(xC) ? acosf(-xC / sqrtf(r3Sqr)) : (PIHalfF + copysignf(PIHalfF, xC)) : PIHalfF;
             value.t = asinf(yC / rScaleF);
             return value;
         }
@@ -776,6 +776,15 @@ void clearQueue(void* key, size_t ksize, uintptr_t value, void* usr) {
     free((char*)key);
 }
 
+// t->t from [0, +/- pi/2] to [0, +/- pi/2] is stretched/mapped to t -> 1/2 * ln(tan(t/2 + pi/4)) from [0, +/- pi/2] to [0, +/- 1.75]
+long double stretchWebMercator(long double t) {
+    // approximation for ln(tan(t/2 + pi/4)) used:
+    long double t4 = 4 * t;
+    return .5L * (619.96L * PI * t) / ((PI * PI - 55.3536L + t4 * (t - PI)) * (PI * PI - 55.3536L + t4 * (t + PI)));
+}
+
+const long double cutoffLatitude = 1.484422229745332366961L;            // for web mercator projection
+
 unsigned __stdcall raster(void* data) {
     threadData* tData = (threadData*)data;
     int yStart = tData->yStart;
@@ -790,7 +799,9 @@ unsigned __stdcall raster(void* data) {
             if (angles.t != 2.0L) {
                 long double amount = pow(2, zoom);
                 long double xTile = angles.p * amount / PIDouble;
-                long double yTile = (angles.t - -PIHalf - .0001L) * amount / PI;        // - .0001 = prevent exact 1 as result (values in image are [0,1), [ = including, ) = excluding )
+                angles.t = stretchWebMercator(angles.t);
+                angles.t = fabsl(angles.t) < cutoffLatitude ? angles.t : copysignl(cutoffLatitude, angles.t);
+                long double yTile = (angles.t - -cutoffLatitude - .0001L) * amount / (2.0L * cutoffLatitude);        // - .0001 = prevent exact 1 as result (values in image are [0,1), [ = including, ) = excluding )
                 int tileX = (int)xTile;                                                 // (int) floors towards 0
                 int tileY = (int)yTile;
                 char id[25];                                                            // maximum length of id incl. \0 at maximum zoom of 30
@@ -805,7 +816,7 @@ unsigned __stdcall raster(void* data) {
                     else if (xTile >= 1.0L) {
                         xTile = .9999L;
                     }
-                    yTile = (angles.t - -PIHalf - .0001L) / PI;
+                    yTile = (angles.t - -cutoffLatitude - .0001L) / (2.0L * cutoffLatitude);
                     if (yTile < 0.0L) {
                         yTile = 0.0L;
                     }
@@ -841,7 +852,7 @@ unsigned __stdcall raster(void* data) {
                             break;                                                      // no break intended for ZIN, ZOUT, SIDE = get as detailed zoom as available uninterrupted from here but this costs too much framerate on Ryzen 5800X
                             long double amount = pow(2, ++z);
                             xTileI = angles.p * amount / PIDouble;
-                            yTileI = (angles.t - -PIHalf - .0001L) * amount / PI;
+                            yTileI = (angles.t - -cutoffLatitude - .0001L) * amount / (2.0L * cutoffLatitude);
                             tileXI = (int)xTileI;
                             tileYI = (int)yTileI;
                             newLength = sprintf_s(newId, 25, idFormat, z, tileXI, tileYI);
@@ -877,7 +888,7 @@ unsigned __stdcall raster(void* data) {
                             if (zoom > 0) {
                                 long double amount = pow(2, zoom - 1);
                                 long double xTile = angles.p * amount / PIDouble;
-                                long double yTile = (angles.t - -PIHalf - .0001L) * amount / PI;
+                                long double yTile = (angles.t - -cutoffLatitude - .0001L) * amount / (2.0L * cutoffLatitude);
                                 int tileX = (int)xTile;
                                 int tileY = (int)yTile;
                                 char id[25];
@@ -892,7 +903,7 @@ unsigned __stdcall raster(void* data) {
                                     else if (xTile >= 1.0L) {
                                         xTile = .9999L;
                                     }
-                                    yTile = (angles.t - -PIHalf - .0001L) / PI;
+                                    yTile = (angles.t - -cutoffLatitude - .0001L) / (2.0L * cutoffLatitude);
                                     if (yTile < 0.0L) {
                                         yTile = 0.0L;
                                     }
@@ -1015,6 +1026,15 @@ LIKE_LNULL:
     return 0;
 }
 
+// t->t from [0, +/- pi/2] to [0, +/- pi/2] is stretched/mapped to t -> 1/2 * ln(tan(t/2 + pi/4)) from [0, +/- pi/2] to [0, +/- 1.75]
+double stretchWebMercatorD(double t) {
+    // approximation for ln(tan(t/2 + pi/4)) used:
+    double t4 = 4 * t;
+    return .5 * (619.96 * PID * t) / ((PID * PID - 55.3536 + t4 * (t - PID)) * (PID * PID - 55.3536 + t4 * (t + PID)));
+}
+
+const double cutoffLatitudeD = 1.484422229745332366961;            // for web mercator projection
+
 unsigned __stdcall rasterD(void* data) {
     threadData* tData = (threadData*)data;
     int yStart = tData->yStart;
@@ -1029,7 +1049,9 @@ unsigned __stdcall rasterD(void* data) {
             if (angles.t != 2.0) {
                 double amount = pow(2, zoom);
                 double xTile = angles.p * amount / PIDoubleD;
-                double yTile = (angles.t - -PIHalfD - .0001) * amount / PID;            // - .0001 = prevent exact 1 as result (values in image are [0,1), [ = including, ) = excluding )
+                angles.t = stretchWebMercatorD(angles.t);
+                angles.t = fabs(angles.t) < cutoffLatitudeD ? angles.t : copysign(cutoffLatitudeD, angles.t);
+                double yTile = (angles.t - -cutoffLatitudeD - .0001) * amount / (2.0 * cutoffLatitudeD);            // - .0001 = prevent exact 1 as result (values in image are [0,1), [ = including, ) = excluding )
                 int tileX = (int)xTile;                                                 // (int) floors towards 0
                 int tileY = (int)yTile;
                 char id[25];                                                            // maximum length of id incl. \0 at maximum zoom of 30
@@ -1044,7 +1066,7 @@ unsigned __stdcall rasterD(void* data) {
                     else if (xTile >= 1.0) {
                         xTile = .9999;
                     }
-                    yTile = (angles.t - -PIHalfD - .0001) / PID;
+                    yTile = (angles.t - -cutoffLatitudeD - .0001) / (2.0 * cutoffLatitudeD);
                     if (yTile < 0.0) {
                         yTile = 0.0;
                     }
@@ -1080,7 +1102,7 @@ unsigned __stdcall rasterD(void* data) {
                             break;                                                      // no break intended for ZIN, ZOUT, SIDE = get as detailed zoom as available uninterrupted from here but this costs too much framerate on Ryzen 5800X
                             double amount = pow(2, ++z);
                             xTileI = angles.p * amount / PIDoubleD;
-                            yTileI = (angles.t - -PIHalfD - .0001) * amount / PID;
+                            yTileI = (angles.t - -cutoffLatitudeD - .0001) * amount / (2.0 * cutoffLatitudeD);
                             tileXI = (int)xTileI;
                             tileYI = (int)yTileI;
                             newLength = sprintf_s(newId, 25, idFormat, z, tileXI, tileYI);
@@ -1116,7 +1138,7 @@ unsigned __stdcall rasterD(void* data) {
                             if (zoom > 0) {
                                 double amount = pow(2, zoom - 1);
                                 double xTile = angles.p * amount / PIDoubleD;
-                                double yTile = (angles.t - -PIHalfD - .0001) * amount / PID;
+                                double yTile = (angles.t - -cutoffLatitudeD - .0001) * amount / (2.0 * cutoffLatitudeD);
                                 int tileX = (int)xTile;
                                 int tileY = (int)yTile;
                                 char id[25];
@@ -1131,7 +1153,7 @@ unsigned __stdcall rasterD(void* data) {
                                     else if (xTile >= 1.0) {
                                         xTile = .9999;
                                     }
-                                    yTile = (angles.t - -PIHalfD - .0001) / PID;
+                                    yTile = (angles.t - -cutoffLatitudeD - .0001) / (2.0 * cutoffLatitudeD);
                                     if (yTile < 0.0) {
                                         yTile = 0.0;
                                     }
@@ -1254,6 +1276,15 @@ LIKE_LNULLD:
     return 0;
 }
 
+// t->t from [0, +/- pi/2] to [0, +/- pi/2] is stretched/mapped to t -> 1/2 * ln(tan(t/2 + pi/4)) from [0, +/- pi/2] to [0, +/- 1.75]
+float stretchWebMercatorF(float t) {
+    // approximation for ln(tan(t/2 + pi/4)) used:
+    float t4 = 4 * t;
+    return .5F * (619.96F * PIF * t) / ((PIF * PIF - 55.3536F + t4 * (t - PIF)) * (PIF * PIF - 55.3536F + t4 * (t + PIF)));
+}
+
+const float cutoffLatitudeF = 1.484422229745332366961F;            // for web mercator projection
+
 unsigned __stdcall rasterF(void* data) {
     threadData* tData = (threadData*)data;
     int yStart = tData->yStart;
@@ -1268,7 +1299,9 @@ unsigned __stdcall rasterF(void* data) {
             if (angles.t != 2.0F) {
                 float amount = pow(2, zoom);
                 float xTile = angles.p * amount / PIDoubleF;
-                float yTile = (angles.t - -PIHalfF - .0001F) * amount / PIF;            // - .0001 = prevent exact 1 as result (values in image are [0,1), [ = including, ) = excluding )
+                angles.t = stretchWebMercatorF(angles.t);
+                angles.t = fabsf(angles.t) < cutoffLatitudeF ? angles.t : copysignf(cutoffLatitudeF, angles.t);
+                float yTile = (angles.t - -cutoffLatitudeF - .0001F) * amount / (2.0F * cutoffLatitudeF);            // - .0001 = prevent exact 1 as result (values in image are [0,1), [ = including, ) = excluding )
                 int tileX = (int)xTile;                                                 // (int) floors towards 0
                 int tileY = (int)yTile;
                 char id[25];                                                            // maximum length of id incl. \0 at maximum zoom of 30
@@ -1283,7 +1316,7 @@ unsigned __stdcall rasterF(void* data) {
                     else if (xTile >= 1.0F) {
                         xTile = .9999F;
                     }
-                    yTile = (angles.t - -PIHalfF - .0001F) / PIF;
+                    yTile = (angles.t - -cutoffLatitudeF - .0001F) / (2.0F * cutoffLatitudeF);
                     if (yTile < 0.0F) {
                         yTile = 0.0F;
                     }
@@ -1319,7 +1352,7 @@ unsigned __stdcall rasterF(void* data) {
                             break;                                                      // no break intended for ZIN, ZOUT, SIDE = get as detailed zoom as available uninterrupted from here but this costs too much framerate on Ryzen 5800X
                             float amount = pow(2, ++z);
                             xTileI = angles.p * amount / PIDoubleF;
-                            yTileI = (angles.t - -PIHalfF - .0001F) * amount / PIF;
+                            yTileI = (angles.t - -cutoffLatitudeF - .0001F) * amount / (2.0F * cutoffLatitudeF);
                             tileXI = (int)xTileI;
                             tileYI = (int)yTileI;
                             newLength = sprintf_s(newId, 25, idFormat, z, tileXI, tileYI);
@@ -1355,7 +1388,7 @@ unsigned __stdcall rasterF(void* data) {
                             if (zoom > 0) {
                                 float amount = pow(2, zoom - 1);
                                 float xTile = angles.p * amount / PIDoubleF;
-                                float yTile = (angles.t - -PIHalfF - .0001F) * amount / PIF;
+                                float yTile = (angles.t - -cutoffLatitudeF - .0001F) * amount / (2.0F * cutoffLatitudeF);
                                 int tileX = (int)xTile;
                                 int tileY = (int)yTile;
                                 char id[25];
@@ -1370,7 +1403,7 @@ unsigned __stdcall rasterF(void* data) {
                                     else if (xTile >= 1.0F) {
                                         xTile = .9999F;
                                     }
-                                    yTile = (angles.t - -PIHalfF - .0001F) / PIF;
+                                    yTile = (angles.t - -cutoffLatitudeF - .0001F) / (2.0F * cutoffLatitudeF);
                                     if (yTile < 0.0F) {
                                         yTile = 0.0F;
                                     }
@@ -1507,7 +1540,9 @@ unsigned __stdcall rasterFWithLighting(void* data) {
             if (angles.t != 2.0F) {
                 float amount = pow(2, zoom);
                 float xTile = angles.p * amount / PIDoubleF;
-                float yTile = (angles.t - -PIHalfF - .0001F) * amount / PIF;            // - .0001 = prevent exact 1 as result (values in image are [0,1), [ = including, ) = excluding )
+                angles.t = stretchWebMercatorF(angles.t);
+                angles.t = fabsf(angles.t) < cutoffLatitudeF ? angles.t : copysignf(cutoffLatitudeF, angles.t);
+                float yTile = (angles.t - -cutoffLatitudeF - .0001F) * amount / (2.0F * cutoffLatitudeF);            // - .0001 = prevent exact 1 as result (values in image are [0,1), [ = including, ) = excluding )
                 int tileX = (int)xTile;                                                 // (int) floors towards 0
                 int tileY = (int)yTile;
                 char id[25];                                                            // maximum length of id incl. \0 at maximum zoom of 30
@@ -1522,7 +1557,7 @@ unsigned __stdcall rasterFWithLighting(void* data) {
                     else if (xTile >= 1.0F) {
                         xTile = .9999F;
                     }
-                    yTile = (angles.t - -PIHalfF - .0001F) / PIF;
+                    yTile = (angles.t - -cutoffLatitudeF - .0001F) / (2.0F * cutoffLatitudeF);
                     if (yTile < 0.0F) {
                         yTile = 0.0F;
                     }
@@ -1558,7 +1593,7 @@ unsigned __stdcall rasterFWithLighting(void* data) {
                             break;                                                      // no break intended for ZIN, ZOUT, SIDE = get as detailed zoom as available uninterrupted from here but this costs too much framerate on Ryzen 5800X
                             float amount = pow(2, ++z);
                             xTileI = angles.p * amount / PIDoubleF;
-                            yTileI = (angles.t - -PIHalfF - .0001F) * amount / PIF;
+                            yTileI = (angles.t - -cutoffLatitudeF - .0001F) * amount / (2.0F * cutoffLatitudeF);
                             tileXI = (int)xTileI;
                             tileYI = (int)yTileI;
                             newLength = sprintf_s(newId, 25, idFormat, z, tileXI, tileYI);
@@ -1594,7 +1629,7 @@ unsigned __stdcall rasterFWithLighting(void* data) {
                             if (zoom > 0) {
                                 float amount = pow(2, zoom - 1);
                                 float xTile = angles.p * amount / PIDoubleF;
-                                float yTile = (angles.t - -PIHalfF - .0001F) * amount / PIF;
+                                float yTile = (angles.t - -cutoffLatitudeF - .0001F) * amount / (2.0F * cutoffLatitudeF);
                                 int tileX = (int)xTile;
                                 int tileY = (int)yTile;
                                 char id[25];
@@ -1609,7 +1644,7 @@ unsigned __stdcall rasterFWithLighting(void* data) {
                                     else if (xTile >= 1.0F) {
                                         xTile = .9999F;
                                     }
-                                    yTile = (angles.t - -PIHalfF - .0001F) / PIF;
+                                    yTile = (angles.t - -cutoffLatitudeF - .0001F) / (2.0F * cutoffLatitudeF);
                                     if (yTile < 0.0F) {
                                         yTile = 0.0F;
                                     }
@@ -1755,16 +1790,160 @@ void copyPixel(int sourceX, int sourceY, int destX, int destY) {
     memcpy((void*)(((unsigned char*)buffer) + (destY * pitch + destX * 3)), (void*)(((unsigned char*)buffer) + (sourceY * pitch + sourceX * 3)), 3);
 }
 
-void putElevation(int x, int y, int r) {
+// sourceX, sourceY is x3, y3
+void paintTriangle(int x1, int y1, int x2, int y2, int sourceX, int sourceY) {
+    int yTop = min(min(y1, y2), sourceY);
+    int yBottom = max(max(y1, y2), sourceY);
+    int yMiddle = yTop == y1 ? (yBottom == y2 ? sourceY : y2) : (yTop == y2 ? (yBottom == y1 ? sourceY : y1) : (yBottom == y2 ? y1 : y2));
+    int yTopX = yTop == y1 ? x1 : (yTop == y2 ? x2 : sourceX);
+    int yBottomX = yBottom == y1 ? x1 : (yBottom == y2 ? x2 : sourceX);
+    int yMiddleX = yMiddle == y1 ? x1 : (yMiddle == y2 ? x2 : sourceX);
+    if (yMiddle > yTop) {
+        if(yTop >= 0 && yTop < HEIGHT && yTopX >= 0 && yTopX < WIDTH)
+            copyPixel(0, 0, yTopX, yTop);
+        float m1 = ((float)(yMiddleX - yTopX)) / (yMiddle - yTop);
+        float m2 = ((float)(yBottomX - yTopX)) / (yBottom - yTop);
+        if (yBottomX > yTopX + m1 * (yBottom - yTop)) {
+            for (int y = yTop >= 0 ? 1 : -yTop; y <= (yMiddle - yTop) && y < (HEIGHT - yTop); ++y) {
+                int xS = yTopX + m1 * y;
+                int xE = yTopX + m2 * y;
+                for (int l = xS >= 0 ? (xS < WIDTH ? xS : (WIDTH - 1)) : 0; l <= xE && l < WIDTH; ++l) {
+                    copyPixel(0, 0, l, yTop + y);
+                }
+            }
+            if (yBottom > yMiddle) {
+                float m3 = ((float)(yBottomX - yMiddleX)) / (yBottom - yMiddle);
+                for (int y = yMiddle >= 0 ? 1 : -yMiddle; y <= (yBottom - yMiddle) && y < (HEIGHT - yMiddle); ++y) {
+                    int xS = yMiddleX + m3 * y;
+                    int xE = yTopX + m2 * (yMiddle - yTop + y);
+                    for (int l = xS >= 0 ? (xS < WIDTH ? xS : (WIDTH - 1)) : 0; l <= xE && l < WIDTH; ++l) {
+                        copyPixel(0, 0, l, yMiddle + y);
+                    }
+                }
+            }
+        }
+        else {
+            for (int y = yTop >= 0 ? 1 : -yTop; y <= (yMiddle - yTop) && y < (HEIGHT - yTop); ++y) {
+                int xS = yTopX + m1 * y;
+                int xE = yTopX + m2 * y;
+                for (int l = xS >= 0 ? (xS < WIDTH ? xS : (WIDTH - 1)) : 0; l >= xE && l >= 0; --l) {
+                    copyPixel(0, 0, l, yTop + y);
+                }
+            }
+            if (yBottom > yMiddle) {
+                float m3 = ((float)(yBottomX - yMiddleX)) / (yBottom - yMiddle);
+                for (int y = yMiddle >= 0 ? 1 : -yMiddle; y <= (yBottom - yMiddle) && y < (HEIGHT - yMiddle); ++y) {
+                    int xS = yMiddleX + m3 * y;
+                    int xE = yTopX + m2 * (yMiddle - yTop + y);
+                    for (int l = xS >= 0 ? (xS < WIDTH ? xS : (WIDTH - 1)) : 0; l >= xE && l >= 0; --l) {
+                        copyPixel(0, 0, l, yMiddle + y);
+                    }
+                }
+            }
+        }
+    }/*
+    else {
+        if (yTop >= 0 && yTop < HEIGHT) {
+            if (yTopX > yMiddleX) {
+                for (int l = yMiddleX >= 0 ? (yMiddleX < WIDTH ? yMiddleX : WIDTH - 1) : 0; l <= yTopX && l < WIDTH; ++l) {
+                    copyPixel(sourceX, sourceY, l, yTop);
+                }
+            }
+            else {
+                for (int l = yMiddleX >= 0 ? (yMiddleX < WIDTH ? yMiddleX : WIDTH - 1) : 0; l >= yTopX && l >= 0; --l) {
+                    copyPixel(sourceX, sourceY, l, yTop);
+                }
+            }
+        }
+        if (yBottom > yMiddle) {
+            float m2 = ((float)(yBottomX - yTopX)) / (yBottom - yTop);
+            float m3 = ((float)(yBottomX - yMiddleX)) / (yBottom - yMiddle);
+            if (yBottomX > yMiddleX) {
+                for (int y = yMiddle >= 0 ? 1 : -yMiddle; y <= yBottom - yMiddle && y < HEIGHT - yMiddle; ++y) {
+                    int xS = yMiddleX + m3 * y;
+                    int xE = yTopX + m2 * y;
+                    for (int l = xS >= 0 ? (xS < WIDTH ? xS : WIDTH - 1) : 0; l <= xE && l < WIDTH; ++l) {
+                        copyPixel(sourceX, sourceY, l, yMiddle + y);
+                    }
+                }
+            }
+            else {
+                for (int y = yMiddle >= 0 ? 1 : -yMiddle; y <= yBottom - yMiddle && y < HEIGHT - yMiddle; ++y) {
+                    int xS = yMiddleX + m3 * y;
+                    int xE = yTopX + m2 * y;
+                    for (int l = xS >= 0 ? (xS < WIDTH ? xS : WIDTH - 1) : 0; l >= xE && l >= 0; --l) {
+                        copyPixel(sourceX, sourceY, l, yMiddle + y);
+                    }
+                }
+            }
+        }
+        else {
+            if (yTop >= 0 && yTop < HEIGHT) {
+                if (yTopX > yMiddleX) {
+                    if (yBottomX > yTopX) {
+                        for (int l = (yTopX + 1) >= 0 ? (yTopX + 1) < WIDTH ? (yTopX + 1) : (WIDTH - 1) : 0; l <= yBottomX && l < WIDTH; ++l) {
+                            copyPixel(sourceX, sourceY, l, yTop);
+                        }
+                    }
+                    else if (yBottomX < yMiddleX) {
+                        for (int l = yBottomX >= 0 ? yBottomX < WIDTH ? yBottomX : (WIDTH - 1) : 0; l < yMiddleX && l < WIDTH; ++l) {
+                            copyPixel(sourceX, sourceY, l, yTop);
+                        }
+                    }
+                }
+                else {
+                    if (yBottomX > yMiddleX) {
+                        for (int l = (yMiddleX + 1) >= 0 ? (yMiddleX + 1) < WIDTH ? (yMiddleX + 1) : (WIDTH - 1) : 0; l <= yBottomX && l < WIDTH; ++l) {
+                            copyPixel(sourceX, sourceY, l, yTop);
+                        }
+                    }
+                    else if (yBottomX < yTopX) {
+                        for (int l = yBottomX >= 0 ? yBottomX < WIDTH ? yBottomX : (WIDTH - 1) : 0; l < yTopX && l < WIDTH; ++l) {
+                            copyPixel(sourceX, sourceY, l, yTop);
+                        }
+                    }
+                }
+            }
+        }
+    }*/
+}
+
+void putElevation(int xC, int yC/*, int r*/) {
+    int x = centerX + xC;
+    int y = centerY + yC;
     ptF gAngles = atF(x, y);
     if (gAngles.t != 2.0F) {
-        int16_t h = *((int16_t*)(elevationData + (((int)((gAngles.t - -PIHalfF - .0001F) / PIF * 1080)) * 2160 + (int)(gAngles.p / PIDoubleF * 2160)) * 2));
-        ptF sAngles = atFWithoutOffsets(x, y);              // when gAngles on globe, so are sAngles expected to be on globe
         //float a = 1.0F / (1.0F - maxRElevate);
         //float f = a * r / roundf(rScaleF) - maxRElevate * a;
+        int16_t h = *((int16_t*)(elevationData + (((int)((gAngles.t - -PIHalfF - .0001F) / PIF * 1080)) * 2160 + (int)(gAngles.p / PIDoubleF * 2160)) * 2));
         float RNew = rScaleF * (1.0F + /*(pow(2, maxZoomLighting - 1 - zoom) - 1) * f **/ elevationExaggeration * h / 6378000.0F);
+        ptF sAngles = atFWithoutOffsets(x, y);              // when gAngles on globe, so are sAngles expected to be on globe
         int nX = centerX + roundf(RNew * cosf(sAngles.t) * cosf(sAngles.p + PIF));
         int nY = centerY + roundf(RNew * sinf(sAngles.t));
+        int nX2, nY2, nX3, nY3;
+        ptF sAngles2, sAngles3;
+        if (xC * yC > 0) {
+            sAngles2 = atFWithoutOffsets(x - .5F, y + .5F);
+            nX2 = centerX + roundf(RNew * cosf(sAngles2.t) * cosf(sAngles2.p + PIF));
+            nY2 = centerY + roundf(RNew * sinf(sAngles2.t));
+            sAngles3 = atFWithoutOffsets(x + .5F, y - .5F);
+            nX3 = centerX + roundf(RNew * cosf(sAngles3.t) * cosf(sAngles3.p + PIF));
+            nY3 = centerY + roundf(RNew * sinf(sAngles3.t));
+        }
+        else {
+            // omitting xC, yC == 0
+            sAngles2 = atFWithoutOffsets(x - .5F, y - .5F);
+            nX2 = centerX + roundf(RNew * cosf(sAngles2.t) * cosf(sAngles2.p + PIF));
+            nY2 = centerY + roundf(RNew * sinf(sAngles2.t));
+            sAngles3 = atFWithoutOffsets(x + .5F, y + .5F);
+            nX3 = centerX + roundf(RNew * cosf(sAngles3.t) * cosf(sAngles3.p + PIF));
+            nY3 = centerY + roundf(RNew * sinf(sAngles3.t));
+        }
+        if (sAngles2.t != 2.0F)
+            paintTriangle(nX, nY, nX2, nY2, x, y);
+        if (sAngles3.t != 2.0F)
+            paintTriangle(nX, nY, nX3, nY3, x, y);
+        /*
         int dirX = (nX - x) > 0 ? 1 : -1;
         int dirY = (nY - y) > 0 ? 1 : -1;
         if (nX != x) {
@@ -1787,31 +1966,53 @@ void putElevation(int x, int y, int r) {
             for (int pY = y + dirY; pY != nY + dirY && pY != centerY + dirY * HEIGHT / 2; pY += dirY) {
                 copyPixel(x, y, x, pY);
             }
-        }
+        }*/
     }
 }
 
 void elevate() {
+    return;
     int R = roundf(rScaleF);
     int maxR = roundf(maxRElevate * R);
     for (int r = R; r > maxR; --r) {
-        putElevation(centerX - r, centerY, r);
+        if(centerX - r >= 0 && HEIGHT > 0)
+            putElevation(-r, 0/*, r*/);
         int lastY = 0;
-        for (int x = -r + 1; x <= r; ++x) {
+        for (int x = (centerX - r + 1) >= 0 ? (-r + 1) : (-centerX + 1); x <= 0 && x < WIDTH - centerX; ++x) {
             int y = roundf(sqrtf(r * r - x * x));
-            int sX = centerX + x;
-            int sYp = centerY + y;
-            int sYm = centerY - y;
-            if (sX >= 0 && sX < WIDTH && sYm >= 0 && sYp < HEIGHT) {
-                putElevation(sX, sYp, r);
-                putElevation(sX, sYm, r);
-                int a = (y - lastY) / 2;                                    // integers! is equal to ceil((y - lastY - 1) / 2)
-                for (int c = 1; c <= a; ++c) {
-                    putElevation(sX - 1, centerY + lastY + c, r);
-                    putElevation(sX - 1, centerY - lastY - c, r);
-                    putElevation(sX, sYp - c, r);
-                    putElevation(sX, sYm + c, r);
-                }
+            if (centerY - y >= 0)
+                putElevation(x, -y/*, r*/);
+            if (centerY + y < HEIGHT)
+                putElevation(x, y/*, r*/);
+            int a = (y - lastY) / 2;                                    // integers! is equal to ceil((y - lastY - 1) / 2)
+            for (int c = 1; c <= a; ++c) {
+                if (centerY + lastY + c < HEIGHT)
+                    putElevation(x - 1, lastY + c/*, r*/);
+                if (centerY - (lastY + c) >= 0)
+                    putElevation(x - 1, -(lastY + c)/*, r*/);
+                if (centerY + y - c < HEIGHT)
+                    putElevation(x, y - c/*, r*/);
+                if (centerY - (y - c) >= 0)
+                    putElevation(x, -(y - c)/*, r*/);
+            }
+            lastY = y;
+        }
+        for (int x = 1; x <= r && x < WIDTH - centerX; ++x) {
+            int y = roundf(sqrtf(r * r - x * x));
+            if (centerY - y >= 0)
+                putElevation(x, -y/*, r*/);
+            if (centerY + y < HEIGHT)
+                putElevation(x, y/*, r*/);
+            int a = (lastY - y) / 2;                                    // integers! is equal to ceil((y - lastY - 1) / 2)
+            for (int c = 1; c <= a; ++c) {
+                if (centerY + lastY - c < HEIGHT)
+                    putElevation(x - 1, lastY - c/*, r*/);
+                if (centerY - (lastY - c) >= 0)
+                    putElevation(x - 1, -(lastY - c)/*, r*/);
+                if (centerY + y + c < HEIGHT)
+                    putElevation(x, y + c/*, r*/);
+                if (centerY - (y + c) >= 0)
+                    putElevation(x, -(y + c)/*, r*/);
             }
             lastY = y;
         }
