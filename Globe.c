@@ -10,6 +10,7 @@
 #include <winhttp.h>
 #include <turbojpeg.h>
 #include <miniLZO.h>
+#include <direct.h>
 
 #pragma warning( disable : 4996 4244 )  // "safe" print functions, int-float-double conversion
 
@@ -37,6 +38,49 @@ const long double PI = 3.141592653589793238462643383279L;
 const long double PIHalf = 1.570796326794896619231321691639L;
 const long double PIDouble = 6.28318530717958647692528676655L;
 
+// approximations, within 1 period length, precision is not bad but it is not good enough for the sizes and calculations involved here
+/*
+long double sinl(long double t) {
+    long double s = t < 0.0L ? -1.0L : 1.0L;
+    t = fabsl(t);
+    return s * (t < 0.4292L ?
+        t : (
+            t < (PI - 0.4292L) ?
+            (1.0L - (PI / 4.74701335L) * (PI / 4.74701335L) * (t - PIHalf) * (t - PIHalf)) : (
+                t < (PI + 0.4292L) ?
+                (PI - t) : (
+                    t < (PIDouble - 0.4292L) ?
+                    -(1.0L - (PI / 4.74701335L) * (PI / 4.74701335L) * (t - (3.0L * PIHalf)) * (t - (3.0L * PIHalf))) :
+                    (-PIDouble + t)
+                    )
+                )
+            )
+        );
+}
+
+long double cosl(long double t) {
+    t = fabsl(t);
+    return t < (PIHalf - 0.4292L) ?
+        (1.0L - (PI / 4.74701335L) * (PI / 4.74701335L) * t * t) : (
+            t < (PIHalf + 0.4292L) ?
+            (PIHalf - t) : (
+                t < (3.0L * PIHalf - 0.4292L) ?
+                -(1.0L - (PI / 4.74701335L) * (PI / 4.74701335L) * (t - PI) * (t - PI)) : (
+                    t < (3.0L * PIHalf + 0.4292L) ?
+                    (-3.0L * PIHalf + t) : (1.0L - (PI / 4.74701335L) * (PI / 4.74701335L) * (t - PIDouble) * (t - PIDouble))
+                    )
+                )
+            );
+}
+
+long double asinl(long double s) {
+    return s < -0.4292L ? -PIHalf + 1.511L * sqrtl(1.0L + s) : (s < 0.4292L ? s : (PIHalf - 1.511L * sqrtl(1.0L - s)));
+}
+
+long double acosl(long double s) {
+    return s < -0.4292L ? PI - 1.511L * sqrtl(1.0L + s) : (s < 0.4292L ? PIHalf - s : (1.511L * sqrtl(1.0L - s)));
+}
+*/
 
 int centerX, centerY;
 long double rScale;
@@ -188,7 +232,48 @@ void determineZoom() {
 const double PID = 3.141592653589793238462643383279;
 const double PIHalfD = 1.570796326794896619231321691639;
 const double PIDoubleD = 6.28318530717958647692528676655;
+/*
+double sin(double t) {
+    double s = t < 0.0 ? -1.0 : 1.0;
+    t = fabs(t);
+    return s * (t < 0.4292 ?
+        t : (
+            t < (PID - 0.4292) ?
+            (1.0 - (PID / 4.74701335) * (PID / 4.74701335) * (t - PIHalfD) * (t - PIHalfD)) : (
+                t < (PID + 0.4292) ?
+                (PID - t) : (
+                    t < (PIDoubleD - 0.4292) ?
+                    -(1.0 - (PID / 4.74701335) * (PID / 4.74701335) * (t - (3.0 * PIHalfD)) * (t - (3.0 * PIHalfD))) :
+                    (-PIDoubleD + t)
+                    )
+                )
+            )
+        );
+}
 
+double cos(double t) {
+    t = fabs(t);
+    return t < (PIHalfD - 0.4292) ?
+        (1.0 - (PID / 4.74701335) * (PID / 4.74701335) * t * t) : (
+            t < (PIHalfD + 0.4292) ?
+            (PIHalfD - t) : (
+                t < (3.0 * PIHalfD - 0.4292) ?
+                -(1.0 - (PID / 4.74701335) * (PID / 4.74701335) * (t - PID) * (t - PID)) : (
+                    t < (3.0 * PIHalfD + 0.4292) ?
+                    (-3.0 * PIHalfD + t) : (1.0 - (PID / 4.74701335) * (PID / 4.74701335) * (t - PIDoubleD) * (t - PIDoubleD))
+                    )
+                )
+            );
+}
+
+double asin(double s) {
+    return s < -0.4292 ? -PIHalfD + 1.511 * sqrt(1.0 + s) : (s < 0.4292 ? s : (PIHalfD - 1.511 * sqrt(1.0 - s)));
+}
+
+double acos(double s) {
+    return s < -0.4292 ? PID - 1.511 * sqrt(1.0 + s) : (s < 0.4292 ? PIHalfD - s : (1.511 * sqrt(1.0 - s)));
+}
+*/
 double rScaleD;
 double rScaleSqrD;
 
@@ -239,7 +324,48 @@ ptD atD(int x, int y)
 const float PIF = 3.141592653589793238462643383279F;
 const float PIHalfF = 1.570796326794896619231321691639F;
 const float PIDoubleF = 6.28318530717958647692528676655F;
+/*
+float sinf(float t) {
+    float s = t < 0.0F ? -1.0F : 1.0F;
+    t = fabsf(t);
+    return s * (t < 0.4292F ?
+        t : (
+            t < (PIF - 0.4292F) ?
+            (1.0F - (PIF / 4.74701335F) * (PIF / 4.74701335F) * (t - PIHalfF) * (t - PIHalfF)) : (
+                t < (PIF + 0.4292F) ?
+                (PIF - t) : (
+                    t < (PIDoubleF - 0.4292F) ?
+                    -(1.0F - (PIF / 4.74701335F) * (PIF / 4.74701335F) * (t - (3.0F * PIHalfF)) * (t - (3.0F * PIHalfF))) :
+                    (-PIDoubleF + t)
+                    )
+                )
+            )
+        );
+}
 
+float cosf(float t) {
+    t = fabsf(t);
+    return t < (PIHalfF - 0.4292F) ?
+        (1.0F - (PIF / 4.74701335F) * (PIF / 4.74701335F) * t * t) : (
+            t < (PIHalfF + 0.4292F) ?
+            (PIHalfF - t) : (
+                t < (3.0F * PIHalfF - 0.4292F) ?
+                -(1.0F - (PIF / 4.74701335F) * (PIF / 4.74701335F) * (t - PIF) * (t - PIF)) : (
+                    t < (3.0F * PIHalfF + 0.4292F) ?
+                    (-3.0F * PIHalfF + t) : (1.0F - (PIF / 4.74701335F) * (PIF / 4.74701335F) * (t - PIDoubleF) * (t - PIDoubleF))
+                    )
+                )
+            );
+}
+
+float asinf(float s) {
+    return s < -0.4292F ? -PIHalfF + 1.511F * sqrtf(1.0F + s) : (s < 0.4292F ? s : (PIHalfF - 1.511F * sqrtf(1.0F - s)));
+}
+
+float acosf(float s) {
+    return s < -0.4292F ? PIF - 1.511F * sqrtf(1.0F + s) : (s < 0.4292F ? PIHalfF - s : (1.511F * sqrtf(1.0F - s)));
+}
+*/
 float rScaleF;
 float rScaleSqrF;
 
@@ -363,6 +489,9 @@ typedef struct AsyncId {
 
 _Atomic int notquitrequested;
 
+char* cachePath;
+char* idStartInCachePath;
+
 void onImageLoading(HINTERNET hInternet, DWORD_PTR dwContext, DWORD dwInternetStatus, LPVOID lpvStatusInformation, DWORD dwStatusInformationLength) {
     asyncId* aId = (asyncId*)dwContext;
     if (notquitrequested) {
@@ -391,6 +520,21 @@ void onImageLoading(HINTERNET hInternet, DWORD_PTR dwContext, DWORD dwInternetSt
                     }
                     tj3Destroy(tjInstance);
                 }
+            }
+            int number = 0;
+            while (number < aId->idLength) {
+                char digit = (aId->id)[number];
+                if (digit == '/') {
+                    digit = '-';
+                }
+                idStartInCachePath[number] = digit;
+                ++number;
+            }
+            idStartInCachePath[number] = '\0';
+            FILE* cacheFile = fopen(cachePath, "wb");
+            if (cacheFile != NULL) {
+                fwrite(aId->buffer, 1, aId->bytesRead, cacheFile);
+                fclose(cacheFile);
             }
             hashmap_set(imgRequested, (void*)(aId->id), aId->idLength, (uintptr_t)0);
             queueFillLevel counts;
@@ -495,6 +639,68 @@ unsigned __stdcall collector(void* data) {
 
                             uintptr_t result;
                             if (!hashmap_get(imgRequested, (void*)id, idLength, &result)) {
+                                int number = 0;
+                                while (number < idLength) {
+                                    char digit = id[number];
+                                    if (digit == '/') {
+                                        digit = '-';
+                                    }
+                                    idStartInCachePath[number] = digit;
+                                    ++number;
+                                }
+                                idStartInCachePath[number] = '\0';
+                                FILE* cacheFile = fopen(cachePath, "rb");
+                                if (cacheFile != NULL) {
+                                    unsigned char* cachedImage = malloc(rasterTileSize * rasterTileSize * 3);                                               // assume uncompressed size should suffice
+                                    if (cachedImage != NULL) {
+                                        size_t sizeRead = fread(cachedImage, sizeof(unsigned char), rasterTileSize * rasterTileSize * 3, cacheFile);
+                                        if (sizeRead != 0 && (sizeRead == rasterTileSize * rasterTileSize * 3 || feof(cacheFile))) {
+                                            fclose(cacheFile);
+                                            tjhandle tjInstance = tj3Init(TJINIT_DECOMPRESS);
+                                            if (tjInstance != NULL) {
+                                                if (tj3DecompressHeader(tjInstance, cachedImage, sizeRead) == 0) {
+                                                    unsigned char* pixels = malloc(TJSCALED(tj3Get(tjInstance, TJPARAM_JPEGWIDTH), TJUNSCALED) * TJSCALED(tj3Get(tjInstance, TJPARAM_JPEGHEIGHT), TJUNSCALED) * tjPixelSize[TJPF_RGB]);     // malloced length expectation == rasterTileSize * rasterTileSize * 3
+                                                    if (pixels != NULL) {
+                                                        if (tj3Decompress8(tjInstance, cachedImage, sizeRead, pixels, 0, TJPF_RGB) == 0) {
+                                                            free(cachedImage);
+                                                            char* pId = malloc(idLength);
+                                                            if (pId != NULL) {
+                                                                memcpy(pId, id, idLength);
+                                                                if (hashmap_sets_left_before_resize(imgPresent) <= 2) {                                                         // <= 1 should suffice but crash was observed in hashmap_get(imgPresent, ...)
+                                                                    dontWaitForCollector = 0;
+                                                                    int countRastering;
+                                                                    do {
+                                                                        if (!notquitrequested) {
+                                                                            goto LIKE_AIDNULL;
+                                                                        }
+                                                                        countRastering = 0;
+                                                                        for (int j = 0; j < maxThreads; ++j) {
+                                                                            countRastering += threadsData[j].rastering;
+                                                                        }
+                                                                    } while (countRastering || !notScheduled || wantsCompletion || !allImagesRequestedPresent);
+                                                                    hashmap_set(imgPresent, (void*)pId, idLength, (uintptr_t)pixels);
+                                                                    dontWaitForCollector = 1;
+                                                                    goto AFTER_IMG_REQUEST;
+                                                                }
+                                                                else {
+                                                                    hashmap_set(imgPresent, (void*)pId, idLength, (uintptr_t)pixels);
+                                                                    goto AFTER_IMG_REQUEST;
+                                                                }
+                                                            }
+                                                        }
+                                                        free(pixels);
+                                                    }
+                                                }
+                                                tj3Destroy(tjInstance);
+                                            }
+                                        }
+                                        else {
+                                            fclose(cacheFile);
+                                        }
+                                        free(cachedImage);
+                                    }
+                                }
+
                                 HINTERNET  hSession = NULL,
                                     hConnect = NULL,
                                     hRequest = NULL;
@@ -591,7 +797,7 @@ unsigned __stdcall collector(void* data) {
                                         }
                                     }
                                     else {
-                                    LIKE_AIDNULL:
+LIKE_AIDNULL: ;
                                         WinHttpSetStatusCallback(hSession,
                                             NULL,
                                             WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS,
@@ -615,7 +821,7 @@ unsigned __stdcall collector(void* data) {
                                     }
                                 }
                             }
-
+AFTER_IMG_REQUEST: ;
                             dId->idLength = 0;
                         }
                         dId = dId->next;
@@ -1920,19 +2126,24 @@ void putElevation(int xC, int yC/*, int r*/) {
         int16_t h = *((int16_t*)(elevationData + (((int)((gAngles.t - -PIHalfF - .0001F) / PIF * 1080)) * 2160 + (int)(gAngles.p / PIDoubleF * 2160)) * 2));
         float RNew = rScaleF * (1.0F + /*(pow(2, maxZoomLighting - 1 - zoom) - 1) * f **/ elevationExaggeration * h / 6378000.0F);
         ptF sAngles = atFWithoutOffsets(x, y);                          // when gAngles on globe, so are sAngles expected to be on globe
-        int nX = centerX + roundf(RNew * cosf(sAngles.t) * cosf(sAngles.p + PIF));
-        int nY = centerY + roundf(RNew * sinf(sAngles.t));
+        float sint = sinf(sAngles.t);
+        int nX = centerX + roundf(RNew * sqrtf(1.0f - sint * sint) * cosf(sAngles.p + PIF));
+        int nY = centerY + roundf(RNew * sint);
         int s = xC * yC > 0 ? 1 : -1;                                   // omitting xC, yC == 0
         ptF sAngles2 = atFWithoutOffsets(x - .4F, y + s * .4F);         // .5 which is the theroretical limit creates pixel smearing for small triangles due to points being rounded to neighbouring pixel, so does .425 slightly
-        int nX2 = centerX + roundf(RNew * cosf(sAngles2.t) * cosf(sAngles2.p + PIF));
-        int nY2 = centerY + roundf(RNew * sinf(sAngles2.t));
-        ptF sAngles3 = atFWithoutOffsets(x + .4F, y - s * .4F);
-        int nX3 = centerX + roundf(RNew * cosf(sAngles3.t) * cosf(sAngles3.p + PIF));
-        int nY3 = centerY + roundf(RNew * sinf(sAngles3.t));
-        if (sAngles2.t != 2.0F)
+        if (sAngles2.t != 2.0F) {
+            float sint = sinf(sAngles2.t);
+            int nX2 = centerX + roundf(RNew * sqrtf(1.0f - sint * sint) * cosf(sAngles2.p + PIF));
+            int nY2 = centerY + roundf(RNew * sint);
             paintTriangle(nX, nY, nX2, nY2, x, y);
-        if (sAngles3.t != 2.0F)
+        }
+        ptF sAngles3 = atFWithoutOffsets(x + .4F, y - s * .4F);
+        if (sAngles3.t != 2.0F) {
+            float sint = sinf(sAngles3.t);
+            int nX3 = centerX + roundf(RNew * sqrtf(1.0f - sint * sint) * cosf(sAngles3.p + PIF));
+            int nY3 = centerY + roundf(RNew * sint);
             paintTriangle(nX, nY, nX3, nY3, x, y);
+        }
     }
 }
 
@@ -2270,8 +2481,6 @@ KEY_END: ;
                         indexId[1] = L's';
                         path = malloc((wcslen(pathFormat) - 2 + 24 + 1) * sizeof(wchar_t));          // 24 is max length id
                         if (path != NULL) {
-                            if (freeUrl)
-                                free(url);
                             goto FORMAT_END;
                         }
                         else {
@@ -2325,6 +2534,39 @@ FORMAT_END: ;
             SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "the following error occurred:", errors[count2], window);
         }
     } while (++count2 < NUM_ERRORS);
+
+    size_t maxNumber = wcslen(url);
+    cachePath = malloc(6 + maxNumber + 1 + 24 + 1);           // "cache/url/id"
+    if (cachePath == NULL) {
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "the following error occurred:", errors[6], window);
+        if (freeUrl)
+            free(url);
+        free(buffer);
+        SDL_UnlockTexture(texture);
+        SDL_DestroyTexture(texture);
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 0;
+    }
+    sprintf(cachePath, "cache/");
+    _mkdir("cache");
+    int startNumber = 6;
+    int number = 0;
+    while (number < maxNumber) {
+        wchar_t character = url[number];
+        if (character < 48 || character > 57 && character < 65 || character > 90 && character < 97 || character > 122) {
+            character = '-';
+        }
+        cachePath[startNumber + number] = (char)character;
+        ++number;
+    }
+    cachePath[startNumber + number] = '/';
+    idStartInCachePath = cachePath + startNumber + number + 1;
+    idStartInCachePath[0] = '\0';
+    _mkdir(cachePath);
+    if (freeUrl)
+        free(url);
 
 
     FILE* compressedElevationDataFile = fopen("data/elevation.lzo", "rb");
@@ -2897,6 +3139,7 @@ AFTER_LOOP:
     hashmap_free(imgPresent);
     hashmap_free(imgRequested);
 
+    free(cachePath);
     free(path);
     free(host);
     free(urlFormat);
