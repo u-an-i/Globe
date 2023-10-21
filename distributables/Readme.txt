@@ -44,7 +44,7 @@ around the poles the data of the closest latitude having data available is
 stretched to them
 
 elevation is presented for outer zoom levels and is exaggerated by a factor
-of 20
+of 40
 
 
 if the application does not start, you might need the Visual Studio 2022

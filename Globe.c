@@ -668,7 +668,7 @@ const unsigned int r = 0;
 const unsigned int g = 1;
 const unsigned int b = 2;
 
-const int maxZoomLighting = 3;
+const float maxZoomLighting = 2.5F;
 
 /// <summary>
 /// lights a pixel from a predefined light ray
@@ -679,8 +679,8 @@ const int maxZoomLighting = 3;
 void lightPixel(int x, int y, unsigned char* rgb) {
     ptF angles = atFWithoutOffsets(x, y);
     double ct = cos(-angles.t);                             // doubles to alleviate banding, does not avail
-    double nx = ct * cos(angles.p + PI);
-    double ny = ct * sin(angles.p + PI);
+    double nx = ct * cos(angles.p + PID);
+    double ny = ct * sin(angles.p + PID);
     double nz = sin(-angles.t);
     double sn = 2.0 * (sx * nx + sy * ny + sz * nz);
     double rx = sx - sn * nx;
@@ -697,7 +697,7 @@ void lightPixel(int x, int y, unsigned char* rgb) {
             f = 0.35;
         else
             f = 0.5;
-    double t = f * a * a * (1.0 - zoomF / (maxZoomLighting - 1));
+    double t = f * a * a * (1.0F - zoomF / maxZoomLighting);
     rgb[r] += (unsigned char)((w - rgb[r]) * t);
     rgb[g] += (unsigned char)((w - rgb[g]) * t);
     rgb[b] += (unsigned char)((w - rgb[b]) * t);
@@ -1783,8 +1783,8 @@ unsigned __stdcall rasterCompletion(void* data) {
     return 0;
 }
 
-const float maxRElevate = 0.1F;
-const float elevationExaggeration = 20.0F;
+const float maxRElevate = 0.2F;
+const float elevationExaggeration = 40.0F;
 
 void copyPixel(int sourceX, int sourceY, int destX, int destY) {
     memcpy((void*)(((unsigned char*)buffer) + (destY * pitch + destX * 3)), (void*)(((unsigned char*)buffer) + (sourceY * pitch + sourceX * 3)), 3);
@@ -1800,112 +1800,114 @@ void paintTriangle(int x1, int y1, int x2, int y2, int sourceX, int sourceY) {
     int yMiddleX = yMiddle == y1 ? x1 : (yMiddle == y2 ? x2 : sourceX);
     if (yMiddle > yTop) {
         if(yTop >= 0 && yTop < HEIGHT && yTopX >= 0 && yTopX < WIDTH)
-            copyPixel(0, 0, yTopX, yTop);
+            copyPixel(sourceX, sourceY, yTopX, yTop);
         float m1 = ((float)(yMiddleX - yTopX)) / (yMiddle - yTop);
         float m2 = ((float)(yBottomX - yTopX)) / (yBottom - yTop);
+        int start;
+        int end;
+        int* lower;
+        int* upper;
         if (yBottomX > yTopX + m1 * (yBottom - yTop)) {
-            for (int y = yTop >= 0 ? 1 : -yTop; y <= (yMiddle - yTop) && y < (HEIGHT - yTop); ++y) {
-                int xS = yTopX + m1 * y;
-                int xE = yTopX + m2 * y;
-                for (int l = xS >= 0 ? (xS < WIDTH ? xS : (WIDTH - 1)) : 0; l <= xE && l < WIDTH; ++l) {
-                    copyPixel(0, 0, l, yTop + y);
-                }
-            }
-            if (yBottom > yMiddle) {
-                float m3 = ((float)(yBottomX - yMiddleX)) / (yBottom - yMiddle);
-                for (int y = yMiddle >= 0 ? 1 : -yMiddle; y <= (yBottom - yMiddle) && y < (HEIGHT - yMiddle); ++y) {
-                    int xS = yMiddleX + m3 * y;
-                    int xE = yTopX + m2 * (yMiddle - yTop + y);
-                    for (int l = xS >= 0 ? (xS < WIDTH ? xS : (WIDTH - 1)) : 0; l <= xE && l < WIDTH; ++l) {
-                        copyPixel(0, 0, l, yMiddle + y);
-                    }
-                }
-            }
+            lower = &start;
+            upper = &end;
         }
         else {
-            for (int y = yTop >= 0 ? 1 : -yTop; y <= (yMiddle - yTop) && y < (HEIGHT - yTop); ++y) {
-                int xS = yTopX + m1 * y;
-                int xE = yTopX + m2 * y;
-                for (int l = xS >= 0 ? (xS < WIDTH ? xS : (WIDTH - 1)) : 0; l >= xE && l >= 0; --l) {
-                    copyPixel(0, 0, l, yTop + y);
-                }
+            lower = &end;
+            upper = &start;
+        }
+        int maxy = (yMiddle < HEIGHT ? yMiddle + 1 : HEIGHT) - yTop;
+        for (int y = yTop >= 0 ? 1 : -yTop; y < maxy; ++y) {
+            start = yTopX + m1 * y;
+            end = yTopX + m2 * y;
+            int maxbound = *upper < WIDTH ? *upper + 1 : WIDTH;
+            for (int l = *lower >= 0 ? (*lower < WIDTH ? *lower : (WIDTH - 1)) : 0; l < maxbound; ++l) {
+                copyPixel(sourceX, sourceY, l, yTop + y);
             }
-            if (yBottom > yMiddle) {
-                float m3 = ((float)(yBottomX - yMiddleX)) / (yBottom - yMiddle);
-                for (int y = yMiddle >= 0 ? 1 : -yMiddle; y <= (yBottom - yMiddle) && y < (HEIGHT - yMiddle); ++y) {
-                    int xS = yMiddleX + m3 * y;
-                    int xE = yTopX + m2 * (yMiddle - yTop + y);
-                    for (int l = xS >= 0 ? (xS < WIDTH ? xS : (WIDTH - 1)) : 0; l >= xE && l >= 0; --l) {
-                        copyPixel(0, 0, l, yMiddle + y);
-                    }
+        }
+        if (yBottom > yMiddle) {
+            float m3 = ((float)(yBottomX - yMiddleX)) / (yBottom - yMiddle);
+            int maxy = (yBottom < HEIGHT ? yBottom + 1 : HEIGHT) - yMiddle;
+            for (int y = yMiddle >= 0 ? 1 : -yMiddle; y < maxy; ++y) {
+                start = yMiddleX + m3 * y;
+                end = yTopX + m2 * (yMiddle - yTop + y);
+                int maxbound = *upper < WIDTH ? *upper + 1 : WIDTH;
+                for (int l = *lower >= 0 ? (*lower < WIDTH ? *lower : (WIDTH - 1)) : 0; l < maxbound; ++l) {
+                    copyPixel(sourceX, sourceY, l, yMiddle + y);
                 }
             }
         }
-    }/*
+    }
     else {
         if (yTop >= 0 && yTop < HEIGHT) {
+            int lower;
+            int upper;
             if (yTopX > yMiddleX) {
-                for (int l = yMiddleX >= 0 ? (yMiddleX < WIDTH ? yMiddleX : WIDTH - 1) : 0; l <= yTopX && l < WIDTH; ++l) {
-                    copyPixel(sourceX, sourceY, l, yTop);
-                }
+                lower = yMiddleX >= 0 ? (yMiddleX < WIDTH ? yMiddleX : WIDTH - 1) : 0;
+                upper = yTopX < WIDTH ? yTopX + 1 : WIDTH;
             }
             else {
-                for (int l = yMiddleX >= 0 ? (yMiddleX < WIDTH ? yMiddleX : WIDTH - 1) : 0; l >= yTopX && l >= 0; --l) {
-                    copyPixel(sourceX, sourceY, l, yTop);
-                }
+                lower = yTopX >= 0 ? (yTopX < WIDTH ? yTopX : WIDTH - 1) : 0;
+                upper = yMiddleX < WIDTH ? yMiddleX + 1 : WIDTH;
+            }
+            for (int l = lower; l < upper; ++l) {
+                copyPixel(sourceX, sourceY, l, yTop);
             }
         }
         if (yBottom > yMiddle) {
             float m2 = ((float)(yBottomX - yTopX)) / (yBottom - yTop);
             float m3 = ((float)(yBottomX - yMiddleX)) / (yBottom - yMiddle);
-            if (yBottomX > yMiddleX) {
-                for (int y = yMiddle >= 0 ? 1 : -yMiddle; y <= yBottom - yMiddle && y < HEIGHT - yMiddle; ++y) {
-                    int xS = yMiddleX + m3 * y;
-                    int xE = yTopX + m2 * y;
-                    for (int l = xS >= 0 ? (xS < WIDTH ? xS : WIDTH - 1) : 0; l <= xE && l < WIDTH; ++l) {
-                        copyPixel(sourceX, sourceY, l, yMiddle + y);
-                    }
-                }
+            int start;
+            int end;
+            int* lower;
+            int* upper;
+            if (yTopX > yMiddleX) {
+                lower = &start;
+                upper = &end;
             }
             else {
-                for (int y = yMiddle >= 0 ? 1 : -yMiddle; y <= yBottom - yMiddle && y < HEIGHT - yMiddle; ++y) {
-                    int xS = yMiddleX + m3 * y;
-                    int xE = yTopX + m2 * y;
-                    for (int l = xS >= 0 ? (xS < WIDTH ? xS : WIDTH - 1) : 0; l >= xE && l >= 0; --l) {
-                        copyPixel(sourceX, sourceY, l, yMiddle + y);
-                    }
+                lower = &end;
+                upper = &start;
+            }
+            int maxy = (yBottom < HEIGHT ? yBottom + 1 : HEIGHT) - yMiddle;
+            for (int y = yMiddle >= 0 ? 1 : -yMiddle; y < maxy; ++y) {
+                start = yMiddleX + m3 * y;
+                end = yTopX + m2 * y;
+                int maxbound = *upper < WIDTH ? *upper + 1 : WIDTH;
+                for (int l = *lower >= 0 ? (*lower < WIDTH ? *lower : WIDTH - 1) : 0; l < maxbound; ++l) {
+                    copyPixel(sourceX, sourceY, l, yMiddle + y);
                 }
             }
         }
         else {
             if (yTop >= 0 && yTop < HEIGHT) {
+                int lower = 0;
+                int upper = 0;
                 if (yTopX > yMiddleX) {
                     if (yBottomX > yTopX) {
-                        for (int l = (yTopX + 1) >= 0 ? (yTopX + 1) < WIDTH ? (yTopX + 1) : (WIDTH - 1) : 0; l <= yBottomX && l < WIDTH; ++l) {
-                            copyPixel(sourceX, sourceY, l, yTop);
-                        }
+                        lower = (yTopX + 1) >= 0 ? (yTopX + 1) < WIDTH ? (yTopX + 1) : (WIDTH - 1) : 0;
+                        upper = yBottomX < WIDTH ? yBottomX + 1 : WIDTH;
                     }
                     else if (yBottomX < yMiddleX) {
-                        for (int l = yBottomX >= 0 ? yBottomX < WIDTH ? yBottomX : (WIDTH - 1) : 0; l < yMiddleX && l < WIDTH; ++l) {
-                            copyPixel(sourceX, sourceY, l, yTop);
-                        }
+                        lower = yBottomX >= 0 ? yBottomX < WIDTH ? yBottomX : (WIDTH - 1) : 0;
+                        upper = yMiddleX < WIDTH ? yMiddleX : WIDTH;
                     }
                 }
                 else {
                     if (yBottomX > yMiddleX) {
-                        for (int l = (yMiddleX + 1) >= 0 ? (yMiddleX + 1) < WIDTH ? (yMiddleX + 1) : (WIDTH - 1) : 0; l <= yBottomX && l < WIDTH; ++l) {
-                            copyPixel(sourceX, sourceY, l, yTop);
-                        }
+                        lower = (yMiddleX + 1) >= 0 ? (yMiddleX + 1) < WIDTH ? (yMiddleX + 1) : (WIDTH - 1) : 0;
+                        upper = yBottomX < WIDTH ? yBottomX + 1 : WIDTH;
                     }
                     else if (yBottomX < yTopX) {
-                        for (int l = yBottomX >= 0 ? yBottomX < WIDTH ? yBottomX : (WIDTH - 1) : 0; l < yTopX && l < WIDTH; ++l) {
-                            copyPixel(sourceX, sourceY, l, yTop);
-                        }
+                        lower = yBottomX >= 0 ? yBottomX < WIDTH ? yBottomX : (WIDTH - 1) : 0;
+                        upper = yTopX < WIDTH ? yTopX : WIDTH;
                     }
+                }
+                for (int l = lower; l < upper; ++l) {
+                    copyPixel(sourceX, sourceY, l, yTop);
                 }
             }
         }
-    }*/
+    }
 }
 
 void putElevation(int xC, int yC/*, int r*/) {
@@ -1913,106 +1915,91 @@ void putElevation(int xC, int yC/*, int r*/) {
     int y = centerY + yC;
     ptF gAngles = atF(x, y);
     if (gAngles.t != 2.0F) {
-        //float a = 1.0F / (1.0F - maxRElevate);
+        //float a = 1.0F / (1.0F - maxRElevate);                        // outcommented smooth transition to non-elevation
         //float f = a * r / roundf(rScaleF) - maxRElevate * a;
         int16_t h = *((int16_t*)(elevationData + (((int)((gAngles.t - -PIHalfF - .0001F) / PIF * 1080)) * 2160 + (int)(gAngles.p / PIDoubleF * 2160)) * 2));
         float RNew = rScaleF * (1.0F + /*(pow(2, maxZoomLighting - 1 - zoom) - 1) * f **/ elevationExaggeration * h / 6378000.0F);
-        ptF sAngles = atFWithoutOffsets(x, y);              // when gAngles on globe, so are sAngles expected to be on globe
+        ptF sAngles = atFWithoutOffsets(x, y);                          // when gAngles on globe, so are sAngles expected to be on globe
         int nX = centerX + roundf(RNew * cosf(sAngles.t) * cosf(sAngles.p + PIF));
         int nY = centerY + roundf(RNew * sinf(sAngles.t));
-        int nX2, nY2, nX3, nY3;
-        ptF sAngles2, sAngles3;
-        if (xC * yC > 0) {
-            sAngles2 = atFWithoutOffsets(x - .5F, y + .5F);
-            nX2 = centerX + roundf(RNew * cosf(sAngles2.t) * cosf(sAngles2.p + PIF));
-            nY2 = centerY + roundf(RNew * sinf(sAngles2.t));
-            sAngles3 = atFWithoutOffsets(x + .5F, y - .5F);
-            nX3 = centerX + roundf(RNew * cosf(sAngles3.t) * cosf(sAngles3.p + PIF));
-            nY3 = centerY + roundf(RNew * sinf(sAngles3.t));
-        }
-        else {
-            // omitting xC, yC == 0
-            sAngles2 = atFWithoutOffsets(x - .5F, y - .5F);
-            nX2 = centerX + roundf(RNew * cosf(sAngles2.t) * cosf(sAngles2.p + PIF));
-            nY2 = centerY + roundf(RNew * sinf(sAngles2.t));
-            sAngles3 = atFWithoutOffsets(x + .5F, y + .5F);
-            nX3 = centerX + roundf(RNew * cosf(sAngles3.t) * cosf(sAngles3.p + PIF));
-            nY3 = centerY + roundf(RNew * sinf(sAngles3.t));
-        }
+        int s = xC * yC > 0 ? 1 : -1;                                   // omitting xC, yC == 0
+        ptF sAngles2 = atFWithoutOffsets(x - .4F, y + s * .4F);         // .5 which is the theroretical limit creates pixel smearing for small triangles due to points being rounded to neighbouring pixel, so does .425 slightly
+        int nX2 = centerX + roundf(RNew * cosf(sAngles2.t) * cosf(sAngles2.p + PIF));
+        int nY2 = centerY + roundf(RNew * sinf(sAngles2.t));
+        ptF sAngles3 = atFWithoutOffsets(x + .4F, y - s * .4F);
+        int nX3 = centerX + roundf(RNew * cosf(sAngles3.t) * cosf(sAngles3.p + PIF));
+        int nY3 = centerY + roundf(RNew * sinf(sAngles3.t));
         if (sAngles2.t != 2.0F)
             paintTriangle(nX, nY, nX2, nY2, x, y);
         if (sAngles3.t != 2.0F)
             paintTriangle(nX, nY, nX3, nY3, x, y);
-        /*
-        int dirX = (nX - x) > 0 ? 1 : -1;
-        int dirY = (nY - y) > 0 ? 1 : -1;
-        if (nX != x) {
-            float m = ((float)nY - y) / (nX - x);
-            int lastY = y;
-            for (int pX = x + dirX; pX != nX + dirX && pX != centerX + dirX * WIDTH / 2; pX += dirX) {
-                int pY = roundf(y + m * (pX - x));
-                if (pY >= 0 && pY < HEIGHT) {
-                    copyPixel(x, y, pX, pY);
-                    int a = (pY - lastY) / 2;
-                    for (int c = dirY; c != a + dirY; c += dirY) {
-                        copyPixel(x, y, pX - dirX, lastY + c);
-                        copyPixel(x, y, pX, pY - c);
-                    }
-                    lastY = pY;
-                }
-            }
-        }
-        else {
-            for (int pY = y + dirY; pY != nY + dirY && pY != centerY + dirY * HEIGHT / 2; pY += dirY) {
-                copyPixel(x, y, x, pY);
-            }
-        }*/
     }
 }
 
 void elevate() {
-    return;
     int R = roundf(rScaleF);
     int maxR = roundf(maxRElevate * R);
     for (int r = R; r > maxR; --r) {
         if(centerX - r >= 0 && HEIGHT > 0)
             putElevation(-r, 0/*, r*/);
         int lastY = 0;
-        for (int x = (centerX - r + 1) >= 0 ? (-r + 1) : (-centerX + 1); x <= 0 && x < WIDTH - centerX; ++x) {
+        int maxX = 1 < (WIDTH - centerX) ? 1 : (WIDTH - centerX);
+        for (int x = (centerX - r + 1) >= 0 ? (-r + 1) : (-centerX + 1); x < maxX; ++x) {
             int y = roundf(sqrtf(r * r - x * x));
             if (centerY - y >= 0)
                 putElevation(x, -y/*, r*/);
             if (centerY + y < HEIGHT)
                 putElevation(x, y/*, r*/);
             int a = (y - lastY) / 2;                                    // integers! is equal to ceil((y - lastY - 1) / 2)
-            for (int c = 1; c <= a; ++c) {
-                if (centerY + lastY + c < HEIGHT)
+            if (centerY + y - 1 < HEIGHT && centerY - (y - 1) >= 0) {
+                for (int c = 1; c <= a; ++c) {
                     putElevation(x - 1, lastY + c/*, r*/);
-                if (centerY - (lastY + c) >= 0)
                     putElevation(x - 1, -(lastY + c)/*, r*/);
-                if (centerY + y - c < HEIGHT)
                     putElevation(x, y - c/*, r*/);
-                if (centerY - (y - c) >= 0)
                     putElevation(x, -(y - c)/*, r*/);
+                }
+            }
+            else {
+                for (int c = 1; c <= a; ++c) {
+                    if (centerY + lastY + c < HEIGHT)
+                        putElevation(x - 1, lastY + c/*, r*/);
+                    if (centerY - (lastY + c) >= 0)
+                        putElevation(x - 1, -(lastY + c)/*, r*/);
+                    if (centerY + y - c < HEIGHT)
+                        putElevation(x, y - c/*, r*/);
+                    if (centerY - (y - c) >= 0)
+                        putElevation(x, -(y - c)/*, r*/);
+                }
             }
             lastY = y;
         }
-        for (int x = 1; x <= r && x < WIDTH - centerX; ++x) {
+        maxX = r < (WIDTH - centerX) ? r + 1 : (WIDTH - centerX);
+        for (int x = 1; x < maxX; ++x) {
             int y = roundf(sqrtf(r * r - x * x));
             if (centerY - y >= 0)
                 putElevation(x, -y/*, r*/);
             if (centerY + y < HEIGHT)
                 putElevation(x, y/*, r*/);
             int a = (lastY - y) / 2;                                    // integers! is equal to ceil((y - lastY - 1) / 2)
-            for (int c = 1; c <= a; ++c) {
-                if (centerY + lastY - c < HEIGHT)
+            if (centerY + lastY - 1 < HEIGHT && centerY - (lastY - 1) >= 0) {
+                for (int c = 1; c <= a; ++c) {
                     putElevation(x - 1, lastY - c/*, r*/);
-                if (centerY - (lastY - c) >= 0)
                     putElevation(x - 1, -(lastY - c)/*, r*/);
-                if (centerY + y + c < HEIGHT)
                     putElevation(x, y + c/*, r*/);
-                if (centerY - (y + c) >= 0)
                     putElevation(x, -(y + c)/*, r*/);
+                }
+            }
+            else {
+                for (int c = 1; c <= a; ++c) {
+                    if (centerY + lastY - c < HEIGHT)
+                        putElevation(x - 1, lastY - c/*, r*/);
+                    if (centerY - (lastY - c) >= 0)
+                        putElevation(x - 1, -(lastY - c)/*, r*/);
+                    if (centerY + y + c < HEIGHT)
+                        putElevation(x, y + c/*, r*/);
+                    if (centerY - (y + c) >= 0)
+                        putElevation(x, -(y + c)/*, r*/);
+                }
             }
             lastY = y;
         }
@@ -2115,6 +2102,7 @@ int main(int argc, char* argv[])
     SDL_Surface* icon = NULL;
 
     if (SDL_Init(SDL_INIT_VIDEO) == 0) {
+        SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
         window = SDL_CreateWindow("Globe", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WIDTH, HEIGHT, SDL_WINDOW_RESIZABLE);
         if (window != NULL) {
             windowID = SDL_GetWindowID(window);
@@ -2454,7 +2442,7 @@ MEMORY_DONE:
     for (int i = 0; i < maxThreads; ++i) {
         threadsData[i].yStart = (i * HEIGHT) / maxThreads;
         threadsData[i].yEnd = ((i + 1) * HEIGHT) / maxThreads;
-        threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < maxZoomLighting ? rasterFWithLighting : zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
+        threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoomF < maxZoomLighting ? rasterFWithLighting : zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
         if (threadsData[i].hThread == 0) {
             notquitrequested = 0;
         }
@@ -2485,27 +2473,8 @@ MEMORY_DONE:
 
     int dequeueing = 0;
 
+    int textureLock = 1;
     int nonRequestedExit = 1;
-
-    int x, y;
-    SDL_GetWindowPosition(window, &x, &y);
-    SDL_WarpMouseGlobal(x + centerX, y + centerY);
-    INPUT fakeFirstClick[2];
-    fakeFirstClick[0].type = INPUT_MOUSE;
-    fakeFirstClick[0].mi.dx = 0;
-    fakeFirstClick[0].mi.dy = 0;
-    fakeFirstClick[0].mi.mouseData = 0;
-    fakeFirstClick[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-    fakeFirstClick[0].mi.time = 0;
-    fakeFirstClick[0].mi.dwExtraInfo = (ULONG_PTR)NULL;
-    fakeFirstClick[1].type = INPUT_MOUSE;
-    fakeFirstClick[1].mi.dx = 0;
-    fakeFirstClick[1].mi.dy = 0;
-    fakeFirstClick[1].mi.mouseData = 0;
-    fakeFirstClick[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
-    fakeFirstClick[1].mi.time = 0;
-    fakeFirstClick[1].mi.dwExtraInfo = (ULONG_PTR)NULL;
-    SendInput(2, fakeFirstClick, sizeof(INPUT));
 
     SDL_Event event;
     while (notquitrequested) {
@@ -2712,7 +2681,7 @@ MEMORY_DONE:
                 for (int i = 0; i < maxThreads; ++i) {
                     WaitForSingleObject(threadsData[i].hThread, INFINITE);
                     CloseHandle(threadsData[i].hThread);
-                    threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < maxZoomLighting ? rasterFWithLighting : zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
+                    threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoomF < maxZoomLighting ? rasterFWithLighting : zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
                     if (threadsData[i].hThread == 0) {
                         notquitrequested = 0;
                         goto AFTER_LOOP;
@@ -2741,7 +2710,7 @@ MEMORY_DONE:
                 countRastering += threadsData[i].rastering;
             }
             if (countRastering == 0) {
-                if (zoom < maxZoomLighting && elevationDataAvailable) {
+                if (zoomF < maxZoomLighting && elevationDataAvailable) {
                     elevate();
                 }
                 memcpy(region, buffer, pitch * HEIGHT);                             // copy all once in main thread appears to be faster than copy parts parallely from threads
@@ -2749,6 +2718,7 @@ MEMORY_DONE:
                 SDL_RenderCopy(renderer, texture, NULL, NULL);
                 SDL_RenderPresent(renderer);
                 if (SDL_LockTexture(texture, NULL, &region, &pitch) != 0) {
+                    textureLock = 0;
                     notquitrequested = 0;
                     goto AFTER_LOOP;
                 }
@@ -2766,7 +2736,7 @@ MEMORY_DONE:
                             WaitForSingleObject(threadsData[i].hComplete, INFINITE);
                             CloseHandle(threadsData[i].hComplete);
                         }
-                        threadsData[i].hComplete = (HANDLE)_beginthreadex(NULL, 0, zoom < maxZoomLighting ? rasterCompletionWithLighting : rasterCompletion, (void*)&(threadsData[i]), 0, NULL);
+                        threadsData[i].hComplete = (HANDLE)_beginthreadex(NULL, 0, zoomF < maxZoomLighting ? rasterCompletionWithLighting : rasterCompletion, (void*)&(threadsData[i]), 0, NULL);
                     }
                 }
                 else {
@@ -2775,14 +2745,14 @@ MEMORY_DONE:
             }
         }
         else if (dequeueing) {
-            int countEmpties = 0;
+            int countNotEmpties = 0;
             for (int i = 0; i < maxThreads; ++i) {
                 if (threadsData[i].hComplete != 0) {
-                    countEmpties += (threadsData[i].lastQueue == NULL ? 0 : 1);
+                    countNotEmpties += (threadsData[i].lastQueue == NULL ? 0 : 1);
                 }
             }
-            if (countEmpties == 0) {
-                if (zoom < maxZoomLighting && elevationDataAvailable) {
+            if (countNotEmpties == 0) {
+                if (zoomF < maxZoomLighting && elevationDataAvailable) {
                     elevate();
                 }
                 memcpy(region, buffer, pitch * HEIGHT);                             // copy all once in main thread appears to be faster than copy parts parallely from threads
@@ -2790,6 +2760,7 @@ MEMORY_DONE:
                 SDL_RenderCopy(renderer, texture, NULL, NULL);
                 SDL_RenderPresent(renderer);
                 if (SDL_LockTexture(texture, NULL, &region, &pitch) != 0) {
+                    textureLock = 0;
                     notquitrequested = 0;
                     goto AFTER_LOOP;
                 }
@@ -2815,6 +2786,7 @@ MEMORY_DONE:
                     }
                     SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_NONE);
                     if (SDL_LockTexture(texture, NULL, &region, &pitch) != 0) {
+                        textureLock = 0;
                         notquitrequested = 0;
                         goto AFTER_LOOP;
                     }
@@ -2853,7 +2825,7 @@ MEMORY_DONE:
                     for (int i = 0; i < maxThreads; ++i) {
                         threadsData[i].yStart = (i * HEIGHT) / maxThreads;
                         threadsData[i].yEnd = ((i + 1) * HEIGHT) / maxThreads;
-                        threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoom < maxZoomLighting ? rasterFWithLighting : zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
+                        threadsData[i].hThread = (HANDLE)_beginthreadex(NULL, 0, zoomF < maxZoomLighting ? rasterFWithLighting : zoom < 16 ? rasterF : zoom < 24 ? rasterD : raster, (void*)&(threadsData[i]), 0, NULL);
                         if (threadsData[i].hThread == 0) {
                             notquitrequested = 0;
                             maxThreads = i;
@@ -2928,10 +2900,11 @@ AFTER_LOOP:
     free(path);
     free(host);
     free(urlFormat);
-    free(buffer);
+    if(buffer != NULL)
+        free(buffer);
     SDL_FreeSurface(icon);
     if (texture != NULL) {
-        if (!rastered || dequeueing)
+        if (textureLock)
             SDL_UnlockTexture(texture);
         SDL_DestroyTexture(texture);
     }
