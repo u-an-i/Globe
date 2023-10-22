@@ -528,7 +528,7 @@ void onImageLoading(HINTERNET hInternet, DWORD_PTR dwContext, DWORD dwInternetSt
             if (counts.count == 0) {
                 allImagesRequestedPresent = 1;
             }
-            char* cacheFilePath = malloc(cachePathLength + 25 + 1);
+            char* cacheFilePath = malloc(cachePathLength + 24 + 1);
             if (cacheFilePath != NULL) {
                 char* idStartInCachePath = cacheFilePath + cachePathLength;
                 memcpy(cacheFilePath, cachePath, cachePathLength);
