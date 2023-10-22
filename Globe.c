@@ -490,7 +490,7 @@ typedef struct AsyncId {
 _Atomic int notquitrequested;
 
 char* cachePath;
-char* idStartInCachePath;
+size_t cachePathLength;
 
 void onImageLoading(HINTERNET hInternet, DWORD_PTR dwContext, DWORD dwInternetStatus, LPVOID lpvStatusInformation, DWORD dwStatusInformationLength) {
     asyncId* aId = (asyncId*)dwContext;
@@ -521,27 +521,33 @@ void onImageLoading(HINTERNET hInternet, DWORD_PTR dwContext, DWORD dwInternetSt
                     tj3Destroy(tjInstance);
                 }
             }
-            int number = 0;
-            while (number < aId->idLength) {
-                char digit = (aId->id)[number];
-                if (digit == '/') {
-                    digit = '-';
-                }
-                idStartInCachePath[number] = digit;
-                ++number;
-            }
-            idStartInCachePath[number] = '\0';
-            FILE* cacheFile = fopen(cachePath, "wb");
-            if (cacheFile != NULL) {
-                fwrite(aId->buffer, 1, aId->bytesRead, cacheFile);
-                fclose(cacheFile);
-            }
             hashmap_set(imgRequested, (void*)(aId->id), aId->idLength, (uintptr_t)0);
             queueFillLevel counts;
             counts.count = 0;
             hashmap_iterate(imgRequested, measurePresence, (void*)&counts);
             if (counts.count == 0) {
                 allImagesRequestedPresent = 1;
+            }
+            char* cacheFilePath = malloc(cachePathLength + 25 + 1);
+            if (cacheFilePath != NULL) {
+                char* idStartInCachePath = cacheFilePath + cachePathLength;
+                memcpy(cacheFilePath, cachePath, cachePathLength);
+                int number = 0;
+                while (number < aId->idLength) {
+                    char digit = aId->id[number];
+                    if (digit == '/') {
+                        digit = '-';
+                    }
+                    idStartInCachePath[number] = digit;
+                    ++number;
+                }
+                idStartInCachePath[number] = '\0';
+                FILE* cacheFile = fopen(cacheFilePath, "wb");
+                if (cacheFile != NULL) {
+                    fwrite(aId->buffer, 1, aId->bytesRead, cacheFile);
+                    fclose(cacheFile);
+                }
+                free(cacheFilePath);
             }
             goto CLOSE_OPEN;
         }
@@ -555,7 +561,7 @@ void onImageLoading(HINTERNET hInternet, DWORD_PTR dwContext, DWORD dwInternetSt
             }
         }
         else if (dwInternetStatus == WINHTTP_CALLBACK_FLAG_SENDREQUEST_COMPLETE) {
-            aId->buffer = malloc(rasterTileSize * rasterTileSize * 3);                      // assume size of uncompressed image is sufficient (checked above)
+            aId->buffer = malloc(rasterTileSize * rasterTileSize * 3);                      // using size of uncompressed image hoping it is sufficient (checked above)
             if (aId->buffer != NULL) {
                 WinHttpReceiveResponse(aId->hRequest, NULL);
             }
@@ -601,7 +607,7 @@ _Atomic int dontWaitForCollector;
 int maxThreads;
 
 typedef struct IdData {
-    char id[25];
+    char id[25];                                // max length of id is 24 + \0 (digits for zoom level 30, xy 2^30, 2 /)
     int idLength;
     struct IdData* next;
 } idData;
@@ -622,6 +628,9 @@ threadData* threadsData;
 wchar_t* host;
 wchar_t* pathFormat;
 wchar_t* path;
+
+char* cachePathCollector;
+char* idStartInCachePath;
 
 unsigned __stdcall collector(void* data) {
     int processPossibleAdditions = 1;
@@ -649,9 +658,9 @@ unsigned __stdcall collector(void* data) {
                                     ++number;
                                 }
                                 idStartInCachePath[number] = '\0';
-                                FILE* cacheFile = fopen(cachePath, "rb");
+                                FILE* cacheFile = fopen(cachePathCollector, "rb");
                                 if (cacheFile != NULL) {
-                                    unsigned char* cachedImage = malloc(rasterTileSize * rasterTileSize * 3);                                               // assume uncompressed size should suffice
+                                    unsigned char* cachedImage = malloc(rasterTileSize * rasterTileSize * 3);                                               // using uncompressed size hoping it suffices, checked below
                                     if (cachedImage != NULL) {
                                         size_t sizeRead = fread(cachedImage, sizeof(unsigned char), rasterTileSize * rasterTileSize * 3, cacheFile);
                                         if (sizeRead != 0 && (sizeRead == rasterTileSize * rasterTileSize * 3 || feof(cacheFile))) {
@@ -679,11 +688,14 @@ unsigned __stdcall collector(void* data) {
                                                                         }
                                                                     } while (countRastering || !notScheduled || wantsCompletion || !allImagesRequestedPresent);
                                                                     hashmap_set(imgPresent, (void*)pId, idLength, (uintptr_t)pixels);
+                                                                    hashmap_set(imgRequested, (void*)pId, idLength, (uintptr_t)0);
                                                                     dontWaitForCollector = 1;
                                                                     goto AFTER_IMG_REQUEST;
                                                                 }
                                                                 else {
                                                                     hashmap_set(imgPresent, (void*)pId, idLength, (uintptr_t)pixels);
+                                                                    hashmap_set(imgRequested, (void*)pId, idLength, (uintptr_t)0);
+                                                                    LOG(("from cache: %s\n", id));
                                                                     goto AFTER_IMG_REQUEST;
                                                                 }
                                                             }
@@ -698,6 +710,9 @@ unsigned __stdcall collector(void* data) {
                                             fclose(cacheFile);
                                         }
                                         free(cachedImage);
+                                    }
+                                    else {
+                                        fclose(cacheFile);
                                     }
                                 }
 
@@ -2536,9 +2551,23 @@ FORMAT_END: ;
     } while (++count2 < NUM_ERRORS);
 
     size_t maxNumber = wcslen(url);
-    cachePath = malloc(6 + maxNumber + 1 + 24 + 1);           // "cache/url/id"
+    cachePath = malloc(5 + 1 + maxNumber + 1 + 1);                  // "cache/URL/"
     if (cachePath == NULL) {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "the following error occurred:", errors[6], window);
+        if (freeUrl)
+            free(url);
+        free(buffer);
+        SDL_UnlockTexture(texture);
+        SDL_DestroyTexture(texture);
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 0;
+    }
+    cachePathCollector = malloc(5 + 1 + maxNumber + 1 + 24 + 1);    // "cache/URL/ID"
+    if (cachePathCollector == NULL) {
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "the following error occurred:", errors[6], window);
+        free(cachePath);
         if (freeUrl)
             free(url);
         free(buffer);
@@ -2553,18 +2582,26 @@ FORMAT_END: ;
     _mkdir("cache");
     int startNumber = 6;
     int number = 0;
+    wchar_t lastCharacter = L' ';
     while (number < maxNumber) {
         wchar_t character = url[number];
-        if (character < 48 || character > 57 && character < 65 || character > 90 && character < 97 || character > 122) {
-            character = '-';
+        wchar_t output;
+        if (character < 48 || character > 57 && character < 65 || character > 90 && character < 97 || character > 122 || lastCharacter == L'%') {           // % = account for possible key placeholder having been set
+            output = L'-';
         }
-        cachePath[startNumber + number] = (char)character;
+        else {
+            output = character;
+        }
+        lastCharacter = character;
+        cachePath[startNumber + number] = (char)output;
         ++number;
     }
+    cachePathLength = startNumber + number + 1;
     cachePath[startNumber + number] = '/';
-    idStartInCachePath = cachePath + startNumber + number + 1;
-    idStartInCachePath[0] = '\0';
+    cachePath[cachePathLength] = '\0';
     _mkdir(cachePath);
+    memcpy(cachePathCollector, cachePath, cachePathLength);
+    idStartInCachePath = cachePathCollector + cachePathLength;
     if (freeUrl)
         free(url);
 
@@ -2635,6 +2672,8 @@ ELEVATION_DONE:
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "the following error occurred:", "failed allocating required memory", window);
     if (elevationDataAvailable)
         free(elevationData);
+    free(cachePathCollector);
+    free(cachePath);
     free(path);
     free(host);
     free(urlFormat);
@@ -3139,6 +3178,7 @@ AFTER_LOOP:
     hashmap_free(imgPresent);
     hashmap_free(imgRequested);
 
+    free(cachePathCollector);
     free(cachePath);
     free(path);
     free(host);
